@@ -2303,6 +2303,7 @@ export interface LangPair {
   'ShareError': undefined;
   'ShareMediaUnavailable': undefined;
   'ShareViewInTelegram': undefined;
+  'ShareUnknownOrigin': undefined;
   'ForwardedFrom': undefined;
 }
 

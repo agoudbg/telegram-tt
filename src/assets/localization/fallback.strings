@@ -3143,4 +3143,5 @@
 "ShareError" = "Failed to load the shared messages.";
 "ShareMediaUnavailable" = "This media is too large to be previewed here.";
 "ShareViewInTelegram" = "View in Telegram";
+"ShareUnknownOrigin" = "Unknown origin";
 "ForwardedFrom" = "Forwarded from";

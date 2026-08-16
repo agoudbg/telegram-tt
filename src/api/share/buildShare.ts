@@ -45,22 +45,11 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   setMessageBuilderCurrentUserId(SHARE_VIEWER_USER_ID);
   const registry = getTLRegistry();
 
-  const messages: ApiMessage[] = [];
-  data.messages.forEach((entry) => {
-    const tlMessage = hydrateTL(entry.message, registry);
-    const apiMessage = buildApiMessage(tlMessage as GramJs.TypeMessage);
-    if (apiMessage) {
-      wireShareMedia(apiMessage, entry.seq, data);
-      messages.push(apiMessage);
-    }
-  });
-  if (!messages.length) return undefined;
-
-  // The sanitizer replaced every message's `peerId` with the virtual-chat
-  // peer, so all messages resolve to the same chat id
-  const chatId = messages[0].chatId;
-
+  // Peers first: the nested-forward degradation below resolves origin names
+  // through this map, keyed by the same WebA-encoded ids the ApiUser/ApiChat
+  // objects get
   const avatars: Record<string, string> = {};
+  const peerNames: Record<string, string> = {};
   const users: ApiUser[] = [];
   const chats: ApiChat[] = [];
   data.peers.forEach((peer) => {
@@ -76,6 +65,7 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
         phoneNumber: '',
         avatarPhotoId: peer.avatarUrl ? SHARE_AVATAR_PHOTO_ID : undefined,
       });
+      if (peer.displayName) peerNames[peer.id] = peer.displayName;
       if (peer.avatarUrl) avatars[peer.id] = peer.avatarUrl;
       return;
     }
@@ -93,8 +83,25 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
         : undefined,
       avatarPhotoId: peer.avatarUrl ? SHARE_AVATAR_PHOTO_ID : undefined,
     });
+    if (peer.displayName) peerNames[id] = peer.displayName;
     if (peer.avatarUrl) avatars[id] = peer.avatarUrl;
   });
+
+  const messages: ApiMessage[] = [];
+  data.messages.forEach((entry) => {
+    const tlMessage = hydrateTL(entry.message, registry);
+    const apiMessage = buildApiMessage(tlMessage as GramJs.TypeMessage);
+    if (apiMessage) {
+      wireShareMedia(apiMessage, entry.seq, data);
+      if (entry.nestedForward) degradeForwardOrigin(apiMessage, peerNames);
+      messages.push(apiMessage);
+    }
+  });
+  if (!messages.length) return undefined;
+
+  // The sanitizer replaced every message's `peerId` with the virtual-chat
+  // peer, so all messages resolve to the same chat id
+  const chatId = messages[0].chatId;
 
   const chat: ApiChat = {
     id: chatId,
@@ -111,6 +118,25 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
 
   return {
     chatId, chat, user, users, chats, messages, avatars,
+  };
+}
+
+// A nestedForward flag means the origin attribution is unreliable (the
+// message is likely a forward of a forward, docs/PLAN.md §2.7): degrade the
+// forward header to the official hidden-user form — origin name as plain,
+// non-clickable text, no profile link or avatar
+function degradeForwardOrigin(message: ApiMessage, peerNames: Record<string, string>) {
+  const forwardInfo = message.forwardInfo;
+  if (!forwardInfo) return;
+
+  const originName = (forwardInfo.fromId && peerNames[forwardInfo.fromId])
+    || (forwardInfo.fromChatId && peerNames[forwardInfo.fromChatId])
+    || forwardInfo.hiddenUserName
+    || getTranslationFn()('ShareUnknownOrigin');
+  message.forwardInfo = {
+    date: forwardInfo.date,
+    isChannelPost: false,
+    hiddenUserName: originName,
   };
 }
 
