@@ -22,6 +22,7 @@ import { getInitialLocationHash, parseInitialLocationHash } from '../util/routin
 import { checkSessionLocked, hasStoredSession } from '../util/sessions';
 import { getActionMessageBg, getWallpaperBaseColor } from '../util/wallpaper';
 import { updateSizes } from '../util/windowSize';
+import { parseSharePath } from '../api/share/shareRoute';
 
 import useTauriDrag from '../hooks/tauri/useTauriDrag';
 import useAppLayout from '../hooks/useAppLayout';
@@ -35,6 +36,7 @@ import UiLoader from './common/UiLoader';
 import AppInactive from './main/AppInactive';
 import LockScreen from './main/LockScreen.async';
 import Main from './main/Main.async';
+import ShareView from './share/ShareView';
 // import Test from './test/demo/MessageTextStreamingTest';
 import Transition from './ui/Transition';
 
@@ -76,6 +78,7 @@ const App = ({
 }: StateProps) => {
   const { isMobile } = useAppLayout();
   const isMobileOs = PLATFORM_ENV === 'iOS' || PLATFORM_ENV === 'Android';
+  const shareId = parseSharePath();
 
   useEffect(() => {
     if (IS_INSTALL_PROMPT_SUPPORTED) {
@@ -207,7 +210,7 @@ const App = ({
       case AppScreens.auth:
         return <Auth />;
       case AppScreens.main:
-        return <Main isMobile={isMobile} />;
+        return shareId ? <ShareView shareId={shareId} /> : <Main isMobile={isMobile} />;
       case AppScreens.lock:
         return <LockScreen isLocked={isScreenLocked} />;
       case AppScreens.inactive:
