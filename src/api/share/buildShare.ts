@@ -3,7 +3,11 @@
 // instances and passed through the official `buildApiMessage`; origin peers
 // become minimal ApiUser/ApiChat entries; hosted media is wired to the
 // backend URLs via `blobUrl`/thumbnails (the rest goes through the
-// mediaLoader short-circuit, see shareMediaUrl.ts).
+// mediaLoader short-circuit, see shareMediaUrl.ts). Media flagged
+// `hosted: false` (oversized files, docs/PLAN.md §2.5) is stripped from the
+// content and replaced with a placeholder text plus, when the bot can
+// re-send it, an official inline URL button with the `get_<id>_<seq>`
+// deep link.
 
 import type { Api as GramJs } from '../../lib/gramjs';
 import type {
@@ -12,6 +16,8 @@ import type {
 import type { ShareMediaEntry, ShareResponse } from './types';
 
 import { CHANNEL_ID_BASE } from '../../config';
+import { getTranslationFn } from '../../util/localization';
+import { formatFileSize } from '../../util/textFormat';
 import { buildApiMessage, setMessageBuilderCurrentUserId } from '../gramjs/apiBuilders/messages';
 import { hydrateTL } from './hydrate';
 import { getTLRegistry } from './tlRegistry';
@@ -22,6 +28,8 @@ const VIRTUAL_CHAT_TITLE = 'Shared Messages';
 // Non-empty marker enabling the `avatar<peerId>` hash (the value itself is
 // not used; the resolver maps the peer id to the hosted avatar URL)
 const SHARE_AVATAR_PHOTO_ID = 'share';
+// Content keys that can carry a hosted/unhosted media file
+const MEDIA_CONTENT_KEYS = ['photo', 'video', 'document', 'sticker', 'audio', 'voice'] as const;
 
 export interface BuiltShare {
   chatId: string;
@@ -41,11 +49,12 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   data.messages.forEach((entry) => {
     const tlMessage = hydrateTL(entry.message, registry);
     const apiMessage = buildApiMessage(tlMessage as GramJs.TypeMessage);
-    if (apiMessage) messages.push(apiMessage);
+    if (apiMessage) {
+      wireShareMedia(apiMessage, entry.seq, data);
+      messages.push(apiMessage);
+    }
   });
   if (!messages.length) return undefined;
-
-  messages.forEach((message) => wireShareMedia(message, data.media));
 
   // The sanitizer replaced every message's `peerId` with the virtual-chat
   // peer, so all messages resolve to the same chat id
@@ -105,10 +114,13 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   };
 }
 
-function wireShareMedia(message: ApiMessage, media: Record<string, ShareMediaEntry>) {
+function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
+  const { media } = data;
   const {
     photo, video, document, sticker,
   } = message.content;
+
+  if (applyUnhostedPlaceholder(message, seq, data)) return;
 
   if (photo) {
     const entry = media[photo.id];
@@ -140,6 +152,41 @@ function wireShareMedia(message: ApiMessage, media: Record<string, ShareMediaEnt
       sticker.thumbnail = buildShareThumbnail(entry);
     }
   }
+}
+
+// Oversized media is not hosted (docs/PLAN.md §2.5): strip it from the
+// content so renderers show a plain bubble, append a placeholder note and,
+// when the bot can re-send the file, attach an official inline URL button
+// with the `get_<shareId>_<seq>` deep link. Returns true when applied.
+function applyUnhostedPlaceholder(message: ApiMessage, seq: number, data: ShareResponse): boolean {
+  const { content } = message;
+  const mediaKey = MEDIA_CONTENT_KEYS.find((key) => {
+    const media = content[key];
+    const entry = media?.id ? data.media[media.id] : undefined;
+    return entry && !entry.hosted;
+  });
+  if (!mediaKey) return false;
+
+  const entry = data.media[content[mediaKey]!.id!];
+  delete content[mediaKey];
+
+  const lang = getTranslationFn();
+  const note = entry.size
+    ? `${lang('ShareMediaUnavailable')} (${formatFileSize(lang, entry.size)})`
+    : lang('ShareMediaUnavailable');
+  // Appending keeps the original caption entities valid (offsets unchanged)
+  content.text = content.text?.text
+    ? { ...content.text, text: `${content.text.text}\n\n${note}` }
+    : { text: note };
+
+  if (entry.retrievable && data.botUsername) {
+    message.inlineButtons = [[{
+      type: 'url',
+      text: lang('ShareViewInTelegram'),
+      url: `https://t.me/${data.botUsername}?start=get_${data.share.id}_${seq}`,
+    }]];
+  }
+  return true;
 }
 
 function buildShareThumbnail(entry: ShareMediaEntry): ApiThumbnail | undefined {

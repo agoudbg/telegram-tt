@@ -39,6 +39,9 @@ export interface ShareResponse {
     avatarUrl: string | undefined;
   }>;
   media: Record<string, ShareMediaEntry>;
+  /** Bot username (no @) for the unhosted-media deep link; undefined when the
+   *  server is not configured with BOT_USERNAME */
+  botUsername: string | undefined;
 }
 
 export interface ShareMediaEntry {

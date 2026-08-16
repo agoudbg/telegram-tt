@@ -3141,4 +3141,6 @@
 "ShareNotFound" = "This share link is invalid or has expired.";
 "ShareRevoked" = "This share has been deleted.";
 "ShareError" = "Failed to load the shared messages.";
+"ShareMediaUnavailable" = "This media is too large to be previewed here.";
+"ShareViewInTelegram" = "View in Telegram";
 "ForwardedFrom" = "Forwarded from";

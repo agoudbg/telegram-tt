@@ -88,8 +88,8 @@ function cacheLangData(data: CachedLangData) {
 
 let fallbackLoadPromise: Promise<CachedLangData> | undefined;
 async function loadFallbackPack() {
-  if (fallbackLangPack || fallbackLoadPromise) return;
-  fallbackLoadPromise = readFallbackStrings();
+  if (fallbackLangPack) return;
+  fallbackLoadPromise ||= readFallbackStrings();
   const fallbackData = await fallbackLoadPromise;
   fallbackLangPack = fallbackData.langPack;
 
@@ -348,6 +348,14 @@ function createTranslationFn(): LangFn {
 
 export function getTranslationFn(): LangFn {
   return translationFn;
+}
+
+// The share view bakes translated texts into built messages and therefore
+// only needs the bundled fallback pack, without waiting for full
+// localization init (which can stall on the server fetch in mocked builds)
+export function ensureFallbackLangPack(): Promise<void> {
+  void loadFallbackPack();
+  return (fallbackLoadPromise ?? Promise.resolve(undefined)).then(() => undefined);
 }
 
 export function setTimeFormat(timeFormat: TimeFormat) {

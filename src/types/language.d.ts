@@ -2301,6 +2301,8 @@ export interface LangPair {
   'ShareNotFound': undefined;
   'ShareRevoked': undefined;
   'ShareError': undefined;
+  'ShareMediaUnavailable': undefined;
+  'ShareViewInTelegram': undefined;
   'ForwardedFrom': undefined;
 }
 

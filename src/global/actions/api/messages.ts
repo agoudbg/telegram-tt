@@ -63,6 +63,7 @@ import { oldTranslate } from '../../../util/oldLangProvider';
 import { debounce, onTickEnd, rafPromise } from '../../../util/schedulers';
 import { getServerTime } from '../../../util/serverTime';
 import { callApi, cancelApiProgress } from '../../../api/gramjs';
+import { getShareContext } from '../../../api/share/shareContext';
 import {
   getIsSavedDialog,
   getUserFullName,
@@ -2699,6 +2700,14 @@ addActionHandler('openUrl', async (global, actions, payload): Promise<void> => {
   const {
     url, shouldSkipModal, ignoreDeepLinks, tryInstant, previewId, linkContext, tabId = getCurrentTabId(),
   } = payload;
+
+  // The share view has no account to resolve deep links with (docs/PLAN.md,
+  // Phase 4): every link opens externally instead
+  if (getShareContext()) {
+    window.open(ensureProtocol(url), '_blank', 'noopener');
+    return;
+  }
+
   const urlWithProtocol = ensureProtocol(url);
   const parsedUrl = new URL(urlWithProtocol);
   const isMixedScript = isMixedScriptUrl(urlWithProtocol);

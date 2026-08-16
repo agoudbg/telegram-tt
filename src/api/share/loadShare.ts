@@ -16,11 +16,15 @@ import { updateTabState } from '../../global/reducers/tabs';
 import { updateUsers } from '../../global/reducers/users';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import { buildCollectionByKey } from '../../util/iteratees';
+import { ensureFallbackLangPack } from '../../util/localization';
 import { buildShare } from './buildShare';
 import { fetchShare } from './fetchShare';
 import { setShareContext } from './shareContext';
 
 export async function loadShare(shareId: string): Promise<ShareLoadStatus> {
+  // Placeholder texts and button labels are baked into the built messages,
+  // so the fallback language pack must be loaded first
+  await ensureFallbackLangPack();
   const result = await fetchShare(shareId);
   if (result.status !== 'ok') return result.status;
 
