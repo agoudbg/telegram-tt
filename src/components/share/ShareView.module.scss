@@ -1,16 +1,38 @@
 .root {
-  display: flex;
-  justify-content: center;
+  isolation: isolate;
+  position: relative;
 
-  width: 100%;
+  overflow: hidden;
+
   height: 100%;
 
   background: var(--theme-background-color);
+
+  @media (min-width: 926px) {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 100%;
+  }
 }
 
 .middle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   width: 100%;
   max-width: 45.5rem;
   height: 100%;
+  margin: 0 auto;
+
   background: var(--color-background);
+}
+
+.status {
+  padding: 0.5rem 1rem;
+
+  color: var(--color-text-secondary);
+
+  background: var(--color-background);
+  border-radius: var(--border-radius-default);
 }

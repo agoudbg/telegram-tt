@@ -75,6 +75,7 @@ export default defineConfig(({ mode }): UserConfig => {
     BUNDLE_STATS_VISUALIZER: bundleStatsVisualizerValue = '',
     HTTPS_CERT_PATH: httpsCertPath = '',
     HTTPS_KEY_PATH: httpsKeyPath = '',
+    SHARE_API_ORIGIN: shareApiOrigin = 'http://localhost:3000',
   } = env;
   const appEnv = env.APP_ENV || (mode === 'development' ? 'development' : 'production');
   const appMockedClient = env.APP_MOCKED_CLIENT || '';
@@ -187,7 +188,9 @@ export default defineConfig(({ mode }): UserConfig => {
   });
 
   return {
-    base: './',
+    // The share view is served from nested paths (/s/<shareId>), so mocked
+    // builds need absolute asset URLs
+    base: appMockedClient === '1' ? '/' : './',
     envPrefix: ['VITE_', 'TG_'],
     assetsInclude: ['**/*.tgs'],
     optimizeDeps: {
@@ -220,6 +223,11 @@ export default defineConfig(({ mode }): UserConfig => {
         'Service-Worker-Allowed': '/',
       },
       https: getHttpsConfig(httpsCertPath, httpsKeyPath),
+      // Share pages fetch sanitized data and hosted media from the backend
+      proxy: {
+        '/api': shareApiOrigin,
+        '/media': shareApiOrigin,
+      },
       warmup: {
         clientFiles: DEV_BUNDLE_WARMUP_CLIENT_FILES,
       },

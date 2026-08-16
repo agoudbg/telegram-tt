@@ -2298,6 +2298,10 @@ export interface LangPair {
   'SettingsPerformanceDesc': undefined;
   'SettingsStickersDesc': undefined;
   'SettingsSessionsDesc': undefined;
+  'ShareNotFound': undefined;
+  'ShareRevoked': undefined;
+  'ShareError': undefined;
+  'ForwardedFrom': undefined;
 }
 
 export interface LangPairWithVariables<V = LangVariable> {

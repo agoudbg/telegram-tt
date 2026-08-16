@@ -1732,7 +1732,7 @@ const Message = ({
         )}
         {asForwarded && (
           <span className="forward-title">
-            {oldLang('ForwardedFrom')}
+            {lang('ForwardedFrom')}
           </span>
         )}
       </span>

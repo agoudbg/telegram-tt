@@ -3138,3 +3138,7 @@
 "SettingsStickersDesc" = "Stickers, Emoji, Reactions";
 "SettingsLanguageDesc" = "{language}, Translate Messages";
 "SettingsSessionsDesc" = "Sessions, Automatically terminate";
+"ShareNotFound" = "This share link is invalid or has expired.";
+"ShareRevoked" = "This share has been deleted.";
+"ShareError" = "Failed to load the shared messages.";
+"ForwardedFrom" = "Forwarded from";
