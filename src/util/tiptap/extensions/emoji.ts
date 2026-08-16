@@ -116,7 +116,7 @@ export const EmojiNode = Node.create({
 function buildEmojiSrc(emoji: string) {
   const code = nativeToUnifiedExtendedWithCache(emoji);
 
-  return code ? `./img-apple-64/${code}.png` : undefined;
+  return code ? `/img-apple-64/${code}.png` : undefined;
 }
 
 function buildEmojiAttrs(emoji: string) {
