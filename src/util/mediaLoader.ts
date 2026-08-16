@@ -12,6 +12,7 @@ import {
   MEDIA_CACHE_NAME_AVATARS,
 } from '../config';
 import { callApi, cancelApiProgress } from '../api/gramjs';
+import { resolveShareMediaUrl } from '../api/share/shareMediaUrl';
 import {
   IS_OPUS_SUPPORTED, IS_PROGRESSIVE_SUPPORTED,
 } from './browser/windowEnvironment';
@@ -43,6 +44,13 @@ export function fetch<T extends ApiMediaFormat>(
   onProgress?: ApiOnProgress,
   callbackUniqueId?: string,
 ): Promise<ApiPreparedMedia> {
+  // Share pages host media on the backend: media hashes resolve to plain
+  // HTTP URLs and never touch the MTProto download layer
+  const shareMediaUrl = resolveShareMediaUrl(url);
+  if (shareMediaUrl) {
+    return fetchShareMedia(url, shareMediaUrl);
+  }
+
   if (mediaFormat === ApiMediaFormat.Progressive) {
     return (
       IS_PROGRESSIVE_SUPPORTED
@@ -187,6 +195,34 @@ export async function unload(url: string) {
     const cacheName = url.startsWith('avatar') ? MEDIA_CACHE_NAME_AVATARS : MEDIA_CACHE_NAME;
     await cacheApi.remove(cacheName, url);
   }
+}
+
+async function fetchShareMedia(hash: string, shareMediaUrl: string): Promise<ApiPreparedMedia> {
+  if (!fetchPromises.has(hash)) {
+    const promise = (async () => {
+      const response = await window.fetch(shareMediaUrl);
+      if (!response.ok) throw new Error(`Failed to fetch share media: ${response.status}`);
+      let blob = await response.blob();
+      if (blob.type === 'audio/ogg' && !IS_OPUS_SUPPORTED) {
+        blob = await oggToWav(blob);
+      }
+      const prepared = prepareMedia(blob);
+      memoryCache.set(hash, prepared);
+      return prepared;
+    })().catch((err) => {
+      if (DEBUG) {
+        // eslint-disable-next-line no-console
+        console.warn(err);
+      }
+      return undefined;
+    }).finally(() => {
+      fetchPromises.delete(hash);
+    });
+
+    fetchPromises.set(hash, promise);
+  }
+
+  return fetchPromises.get(hash) as Promise<ApiPreparedMedia>;
 }
 
 function makeOnProgress(url: string) {

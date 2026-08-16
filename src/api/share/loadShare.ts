@@ -27,7 +27,7 @@ export async function loadShare(shareId: string): Promise<ShareLoadStatus> {
   const built = buildShare(result.data);
   if (!built) return 'error';
 
-  setShareContext({ shareId, media: result.data.media });
+  setShareContext({ shareId, media: result.data.media, avatars: built.avatars });
 
   const tabId = getCurrentTabId();
   let global = getGlobal();
