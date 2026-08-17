@@ -1,10 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
 
-const KNOWN_MOCKED_CLIENT_ERRORS = [
-  'selectTabState(...)',
-  'Unsafe BigInt conversion',
-];
-
 const TYPE_FIXTURES = [
   ['text', 'Plain text message'],
   ['entities', 'Bold, italic, code and a link'],
@@ -38,9 +33,7 @@ test.describe('read-only share view', () => {
   test('renders the message-type coverage matrix', async ({ page }, testInfo) => {
     const unexpectedErrors: string[] = [];
     page.on('pageerror', (error) => {
-      if (!KNOWN_MOCKED_CLIENT_ERRORS.some((known) => error.message.includes(known))) {
-        unexpectedErrors.push(error.message);
-      }
+      unexpectedErrors.push(error.message);
     });
 
     await page.goto('/s/demo-types', { waitUntil: 'domcontentloaded' });
@@ -51,6 +44,7 @@ test.describe('read-only share view', () => {
     // Core message/media types
     await expect(page.getByText('Plain text message', { exact: true })).toBeVisible();
     await expect(page.locator('.Album')).toHaveCount(1);
+    await expect(page.locator('.Album [id^="album-media-"]')).toHaveCount(2);
     await expect(page.locator('video.full-media')).toHaveCount(1);
     await expect(page.locator('.Location')).toHaveCount(1);
     await expect(page.locator('.EmbeddedMessage')).toHaveCount(1);
@@ -67,6 +61,24 @@ test.describe('read-only share view', () => {
     // Read-only trimming
     await expect(page.locator('#message-input-text')).toHaveCount(0);
     await expect(page.locator('.HeaderActions button')).toHaveCount(0);
+
+    if (testInfo.project.name === 'chromium') {
+      const message = page.locator('.Message:visible').first();
+      await message.scrollIntoViewIfNeeded();
+      await message.dispatchEvent('contextmenu', {
+        button: 2,
+        clientX: 400,
+        clientY: 400,
+      });
+      const menu = page.locator('.MessageContextMenu');
+      await expect(menu).toBeAttached();
+      await expect(menu.locator('.MenuItem')).toHaveCount(1);
+      await expect(menu.locator('.MenuItem').first()).toContainText('lng_context_copy_text');
+      for (const label of ['Reply', 'Pin', 'Forward', 'Select', 'Delete']) {
+        await expect(menu.getByText(label, { exact: true })).toHaveCount(0);
+      }
+      await page.keyboard.press('Escape');
+    }
 
     await page.locator('.MessageList').screenshot({
       path: testInfo.outputPath('message-types.png'),

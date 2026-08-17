@@ -18,9 +18,7 @@ const env = {
 
 rmSync(dataDir, { recursive: true, force: true });
 mkdirSync(dataDir, { recursive: true });
-const pnpm = process.platform === 'win32'
-  ? path.join(process.env.APPDATA || '', 'npm', 'pnpm.cmd')
-  : 'pnpm';
+const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 execFileSync(
   process.platform === 'win32' ? process.env.ComSpec || 'cmd.exe' : pnpm,
   process.platform === 'win32'
@@ -39,7 +37,16 @@ const server = spawn(process.execPath, ['apps/server/dist/main.js'], {
   env,
   stdio: 'inherit',
 });
-server.on('exit', (code) => process.exit(code ?? 0));
+const cleanup = () => rmSync(dataDir, { recursive: true, force: true });
+server.on('exit', (code) => {
+  cleanup();
+  process.exit(code ?? 0);
+});
+server.on('error', cleanup);
+process.on('exit', cleanup);
 for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => server.kill(signal));
+  process.on(signal, () => {
+    cleanup();
+    server.kill(signal);
+  });
 }

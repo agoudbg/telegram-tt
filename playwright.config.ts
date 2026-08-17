@@ -10,7 +10,7 @@ const config: PlaywrightTestConfig = {
       command: 'node tests/playwright/start-share-api.mjs',
       port: 3000,
       timeout: 120 * 1000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
     },
     {
       command: 'npm run dev:mocked',
@@ -24,6 +24,7 @@ const config: PlaywrightTestConfig = {
     video: 'retain-on-failure',
     trace: 'on-first-retry',
   },
+  snapshotPathTemplate: '{snapshotDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}',
   reporter: [['html', { outputFolder: 'playwright-report' }]],
   projects: [
     {
