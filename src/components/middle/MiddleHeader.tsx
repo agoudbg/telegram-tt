@@ -125,6 +125,7 @@ const MiddleHeader = ({
   } = getActions();
 
   const lang = useLang();
+  const isShareView = Boolean(getShareContext());
 
   const isBackButtonActiveRef = useRef(true);
   const { isTablet } = useAppLayout();
@@ -141,6 +142,7 @@ const MiddleHeader = ({
   });
 
   const handleOpenChat = useLastCallback((event: React.MouseEvent | React.TouchEvent) => {
+    if (isShareView) return;
     if ((event.target as Element).closest('.title > .custom-emoji')) return;
 
     // Force close My Profile if clicked on Saved Messages header
@@ -154,7 +156,7 @@ const MiddleHeader = ({
     onTouchStart: handleLongPressTouchStart,
     onTouchEnd: handleLongPressTouchEnd,
   } = useLongPress({
-    onStart: handleOpenSearch,
+    onStart: isShareView ? undefined : handleOpenSearch,
     onClick: handleOpenChat,
     threshold: SEARCH_LONGTAP_THRESHOLD,
   });
@@ -228,7 +230,6 @@ const MiddleHeader = ({
 
   // The share view is read-only and has no live connection (docs/PLAN.md,
   // Phase 4): suppress the "updating" connection subtitle
-  const isShareView = Boolean(getShareContext());
   const headerStatusText = isShareView ? undefined : connectionStatusText;
 
   function renderInfoTitle() {
@@ -309,9 +310,9 @@ const MiddleHeader = ({
               status={headerStatusText || savedMessagesStatus}
               withDots={Boolean(connectionStatusText)}
               noStatusOrTyping={isShareView}
-              withFullInfo={threadId === MAIN_THREAD_ID}
-              withMediaViewer={threadId === MAIN_THREAD_ID}
-              withStory={!isChatWithSelf}
+              withFullInfo={!isShareView && threadId === MAIN_THREAD_ID}
+              withMediaViewer={!isShareView && threadId === MAIN_THREAD_ID}
+              withStory={!isShareView && !isChatWithSelf}
               withUpdatingStatus
               isSavedDialog={isSavedDialog}
               storyViewerOrigin={StoryViewerOrigin.MiddleHeaderAvatar}
@@ -328,10 +329,10 @@ const MiddleHeader = ({
               withMonoforumStatus={chat?.isMonoforum}
               status={headerStatusText || savedMessagesStatus}
               withDots={Boolean(connectionStatusText)}
-              withMediaViewer={threadId === MAIN_THREAD_ID}
-              withFullInfo={threadId === MAIN_THREAD_ID}
+              withMediaViewer={!isShareView && threadId === MAIN_THREAD_ID}
+              withFullInfo={!isShareView && threadId === MAIN_THREAD_ID}
               withUpdatingStatus
-              withStory
+              withStory={!isShareView}
               isSavedDialog={isSavedDialog}
               storyViewerOrigin={StoryViewerOrigin.MiddleHeaderAvatar}
               emojiStatusSize={EMOJI_STATUS_SIZE}

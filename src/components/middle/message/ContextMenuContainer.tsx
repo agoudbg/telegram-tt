@@ -81,6 +81,7 @@ import buildClassName from '../../../util/buildClassName';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { isUserId } from '../../../util/entities/ids';
 import { getTranslationCacheKey, parseTranslationCacheKey } from '../../../util/keys/translationKey';
+import { getShareContext } from '../../../api/share/shareContext';
 import { getSelectionAsFormattedText } from './helpers/getSelectionAsFormattedText';
 import { isSelectionRangeInsideMessage } from './helpers/isSelectionRangeInsideMessage';
 
@@ -292,6 +293,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
 
   const oldLang = useOldLang();
   const lang = useLang();
+  const isShareView = Boolean(getShareContext());
 
   const noForwardsNotice = noForwardsPeerEnabled
     ? lang('ContextMenuNoForwardsPeer', { name: userFullName })
@@ -396,7 +398,8 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
     return getIsDownloading(activeDownloads, downloadableMedia);
   }, [activeDownloads, album, message]);
 
-  const selectionRange = canReply && selection?.rangeCount ? selection.getRangeAt(0) : undefined;
+  const selectionRange = !isShareView && canReply && selection?.rangeCount
+    ? selection.getRangeAt(0) : undefined;
 
   useEffect(() => {
     if (isMessageTranslated) {
@@ -739,44 +742,44 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         message={message}
         isPrivate={isPrivate}
         isCurrentUserPremium={isCurrentUserPremium}
-        canBuyPremium={canBuyPremium}
+        canBuyPremium={isShareView ? undefined : canBuyPremium}
         isOpen={isMenuOpen}
         enabledReactions={enabledReactions}
         reactionsLimit={reactionsLimit}
         anchor={anchor}
         targetHref={targetHref}
         chat={chat}
-        canShowReactionsCount={canShowReactionsCount}
-        canShowReactionList={canShowReactionList}
-        canSendNow={canSendNow}
-        canReschedule={canReschedule}
-        canReply={canReply}
+        canShowReactionsCount={isShareView ? undefined : canShowReactionsCount}
+        canShowReactionList={isShareView ? undefined : canShowReactionList}
+        canSendNow={isShareView ? undefined : canSendNow}
+        canReschedule={isShareView ? undefined : canReschedule}
+        canReply={isShareView ? undefined : canReply}
         canQuote={selectionQuoteOffset !== UNQUOTABLE_OFFSET}
-        canDelete={canDelete}
-        canPin={canPin}
-        canReport={canReport}
+        canDelete={isShareView ? undefined : canDelete}
+        canPin={isShareView ? undefined : canPin}
+        canReport={isShareView ? undefined : canReport}
         repliesThreadInfo={repliesThreadInfo}
-        canUnpin={canUnpin}
-        canEdit={canEdit}
-        canAppendTodoList={canAppendTodoList}
-        canForward={canForward}
-        canFaveSticker={canFaveSticker}
-        canUnfaveSticker={canUnfaveSticker}
+        canUnpin={isShareView ? undefined : canUnpin}
+        canEdit={isShareView ? undefined : canEdit}
+        canAppendTodoList={isShareView ? undefined : canAppendTodoList}
+        canForward={isShareView ? undefined : canForward}
+        canFaveSticker={isShareView ? undefined : canFaveSticker}
+        canUnfaveSticker={isShareView ? undefined : canUnfaveSticker}
         canCopy={canCopy}
         canCopyLink={canCopyLink}
-        canSelect={canSelect}
+        canSelect={isShareView ? undefined : canSelect}
         canDownload={canDownload}
-        canSaveGif={canSaveGif}
-        canRevote={canRevote}
-        canClosePoll={canClosePoll}
-        canShowSeenBy={canShowSeenBy}
-        canTranslate={canTranslate}
-        canShowOriginal={canShowOriginal}
-        canSelectLanguage={canSelectLanguage}
+        canSaveGif={isShareView ? undefined : canSaveGif}
+        canRevote={isShareView ? undefined : canRevote}
+        canClosePoll={isShareView ? undefined : canClosePoll}
+        canShowSeenBy={isShareView ? undefined : canShowSeenBy}
+        canTranslate={isShareView ? undefined : canTranslate}
+        canShowOriginal={isShareView ? undefined : canShowOriginal}
+        canSelectLanguage={isShareView ? undefined : canSelectLanguage}
         currentTranslationTone={currentTranslationTone}
         canPlayAnimatedEmojis={canPlayAnimatedEmojis}
         shouldRenderShowWhen={shouldRenderShowWhen}
-        canLoadReadDate={canLoadReadDate}
+        canLoadReadDate={isShareView ? undefined : canLoadReadDate}
         hasCustomEmoji={hasCustomEmoji}
         customEmojiSets={customEmojiSets}
         isDownloading={isDownloading}
@@ -819,7 +822,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         onShowOriginal={handleShowOriginal}
         onSelectLanguage={handleSelectLanguage}
         userFullName={userFullName}
-        canGift={canGift}
+        canGift={isShareView ? undefined : canGift}
         noForwardsNotice={noForwardsNotice}
       />
       <PinMessageModal
