@@ -9,9 +9,9 @@ export type ShareFetchResult = {
   status: 'not_found' | 'revoked' | 'error';
 };
 
-export async function fetchShare(shareId: string): Promise<ShareFetchResult> {
+export async function fetchShare(shareId: string, signal?: AbortSignal): Promise<ShareFetchResult> {
   try {
-    const response = await fetch(`/api/shares/${encodeURIComponent(shareId)}`);
+    const response = await fetch(`/api/shares/${encodeURIComponent(shareId)}`, { signal });
     if (response.status === 404) return { status: 'not_found' };
     if (response.status === 410) return { status: 'revoked' };
     if (!response.ok) return { status: 'error' };

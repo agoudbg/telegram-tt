@@ -108,6 +108,14 @@ export function setMessageBuilderCurrentUserId(_currentUserId: string) {
   currentUserId = _currentUserId;
 }
 
+export function getMessageBuilderCurrentUserId(): string | undefined {
+  return currentUserId;
+}
+
+export function restoreMessageBuilderCurrentUserId(_currentUserId: string | undefined) {
+  currentUserId = _currentUserId!;
+}
+
 export function buildApiSponsoredMessage(
   mtpMessage: GramJs.SponsoredMessage, chatId: string,
 ): ApiSponsoredMessage | undefined {

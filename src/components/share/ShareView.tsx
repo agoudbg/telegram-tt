@@ -8,6 +8,7 @@ import type { ShareLoadStatus } from '../../api/share/types';
 
 import buildClassName from '../../util/buildClassName';
 import { loadShare } from '../../api/share/loadShare';
+import { clearShareContext } from '../../api/share/shareContext';
 import { applyMiniAppTheme } from './miniAppTheme';
 
 import useAppLayout from '../../hooks/useAppLayout';
@@ -35,11 +36,14 @@ const ShareView = ({ shareId }: OwnProps) => {
 
   useEffect(() => {
     let isCurrent = true;
-    void loadShare(shareId).then((loadStatus) => {
+    const controller = new AbortController();
+    void loadShare(shareId, controller.signal).then((loadStatus) => {
       if (isCurrent) setStatus(loadStatus);
     });
     return () => {
       isCurrent = false;
+      controller.abort();
+      clearShareContext();
     };
   }, [shareId]);
 

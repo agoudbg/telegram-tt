@@ -8,16 +8,25 @@
 
 import type { ShareMediaEntry } from './types';
 
+import { restoreMessageBuilderCurrentUserId } from '../gramjs/apiBuilders/messages';
+
 export interface ShareContext {
   shareId: string;
   media: Record<string, ShareMediaEntry>;
   avatars: Record<string, string>;
+  messageBuilderCurrentUserId: string | undefined;
 }
 
 let currentContext: ShareContext | undefined;
 
 export function setShareContext(context: ShareContext) {
   currentContext = context;
+}
+
+export function clearShareContext() {
+  const context = currentContext;
+  currentContext = undefined;
+  if (context) restoreMessageBuilderCurrentUserId(context.messageBuilderCurrentUserId);
 }
 
 export function getShareContext(): ShareContext | undefined {

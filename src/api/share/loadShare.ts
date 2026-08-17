@@ -17,21 +17,40 @@ import { updateUsers } from '../../global/reducers/users';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import { buildCollectionByKey } from '../../util/iteratees';
 import { ensureFallbackLangPack } from '../../util/localization';
+import {
+  getMessageBuilderCurrentUserId,
+  restoreMessageBuilderCurrentUserId,
+} from '../gramjs/apiBuilders/messages';
 import { buildShare } from './buildShare';
 import { fetchShare } from './fetchShare';
-import { setShareContext } from './shareContext';
+import { clearShareContext, getShareContext, setShareContext } from './shareContext';
 
-export async function loadShare(shareId: string): Promise<ShareLoadStatus> {
+export async function loadShare(shareId: string, signal?: AbortSignal): Promise<ShareLoadStatus> {
+  const shareContext = getShareContext();
+  const previousMessageBuilderCurrentUserId = shareContext
+    ? shareContext.messageBuilderCurrentUserId
+    : getMessageBuilderCurrentUserId();
+  clearShareContext();
+
   // Placeholder texts and button labels are baked into the built messages,
   // so the fallback language pack must be loaded first
   await ensureFallbackLangPack();
-  const result = await fetchShare(shareId);
+  const result = await fetchShare(shareId, signal);
   if (result.status !== 'ok') return result.status;
+  if (signal?.aborted) return 'error';
 
   const built = buildShare(result.data);
-  if (!built) return 'error';
+  if (!built) {
+    restoreMessageBuilderCurrentUserId(previousMessageBuilderCurrentUserId);
+    return 'error';
+  }
 
-  setShareContext({ shareId, media: result.data.media, avatars: built.avatars });
+  setShareContext({
+    shareId,
+    media: result.data.media,
+    avatars: built.avatars,
+    messageBuilderCurrentUserId: previousMessageBuilderCurrentUserId,
+  });
 
   const tabId = getCurrentTabId();
   let global = getGlobal();
