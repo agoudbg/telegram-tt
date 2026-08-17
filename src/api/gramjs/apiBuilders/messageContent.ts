@@ -458,7 +458,9 @@ export function buildGeoPoint(geo: GramJs.TypeGeoPoint): ApiLocation['geo'] | un
   return {
     long,
     lat,
-    accessHash: accessHash.toString(),
+    // Sanitized share payloads have accessHash stripped (docs/PLAN.md §2.6);
+    // the point is still rendered fine without a stable id
+    accessHash: accessHash?.toString(),
     accuracyRadius,
   };
 }

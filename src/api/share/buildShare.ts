@@ -9,15 +9,17 @@
 // re-send it, an official inline URL button with the `get_<id>_<seq>`
 // deep link.
 
-import type { Api as GramJs } from '../../lib/gramjs';
+import { Api as GramJs } from '../../lib/gramjs';
+
 import type {
-  ApiChat, ApiMessage, ApiThumbnail, ApiUser,
+  ApiChat, ApiMessage, ApiMessagePoll, ApiThumbnail, ApiUser,
 } from '../types';
 import type { ShareMediaEntry, ShareResponse } from './types';
 
 import { CHANNEL_ID_BASE } from '../../config';
 import { getTranslationFn } from '../../util/localization';
 import { formatFileSize } from '../../util/textFormat';
+import { buildMessagePollFromMedia } from '../gramjs/apiBuilders/messageContent';
 import { buildApiMessage, setMessageBuilderCurrentUserId } from '../gramjs/apiBuilders/messages';
 import { hydrateTL } from './hydrate';
 import { getTLRegistry } from './tlRegistry';
@@ -38,6 +40,9 @@ export interface BuiltShare {
   users: ApiUser[];
   chats: ApiChat[];
   messages: ApiMessage[];
+  /** Poll summaries referenced by the messages (the official builder only
+   *  stores `content.pollId`; the renderer reads the rest from state) */
+  polls: ApiMessagePoll[];
   avatars: Record<string, string>;
 }
 
@@ -88,13 +93,18 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   });
 
   const messages: ApiMessage[] = [];
+  const polls: ApiMessagePoll[] = [];
   data.messages.forEach((entry) => {
-    const tlMessage = hydrateTL(entry.message, registry);
-    const apiMessage = buildApiMessage(tlMessage as GramJs.TypeMessage);
+    const tlMessage = hydrateTL(entry.message, registry) as GramJs.TypeMessage;
+    const apiMessage = buildApiMessage(tlMessage);
     if (apiMessage) {
       wireShareMedia(apiMessage, entry.seq, data);
       if (entry.nestedForward) degradeForwardOrigin(apiMessage, peerNames);
       messages.push(apiMessage);
+      const poll = tlMessage instanceof GramJs.Message && tlMessage.media
+        ? buildMessagePollFromMedia(tlMessage.media)
+        : undefined;
+      if (poll) polls.push(poll);
     }
   });
   if (!messages.length) return undefined;
@@ -117,7 +127,7 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   };
 
   return {
-    chatId, chat, user, users, chats, messages, avatars,
+    chatId, chat, user, users, chats, messages, polls, avatars,
   };
 }
 

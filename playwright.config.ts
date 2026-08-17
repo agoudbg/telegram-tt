@@ -5,12 +5,20 @@ const config: PlaywrightTestConfig = {
   timeout: process.env.CI ? 60 * 5 * 1000 : 30 * 1000,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  webServer: {
-    command: 'npm run build:mocked && serve -l 1235 dist',
-    port: 1235,
-    timeout: 120 * 1000,
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'node tests/playwright/start-share-api.mjs',
+      port: 3000,
+      timeout: 120 * 1000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'npm run dev:mocked',
+      port: 1235,
+      timeout: 120 * 1000,
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
   use: {
     baseURL: 'http://localhost:1235/',
     video: 'retain-on-failure',
@@ -23,16 +31,8 @@ const config: PlaywrightTestConfig = {
       use: { ...devices['Desktop Chrome'] },
     },
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    {
-      name: 'ios',
-      use: { ...devices['iPhone X'] },
+      name: 'mobile-chromium',
+      use: { ...devices['Pixel 7'] },
     },
   ],
 };

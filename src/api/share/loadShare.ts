@@ -10,7 +10,7 @@ import { MAIN_THREAD_ID } from '../types/messages';
 
 import { updateChats } from '../../global/reducers/chats';
 import {
-  addChatMessagesById, safeReplaceViewportIds, updateListedIds,
+  addChatMessagesById, safeReplaceViewportIds, updateListedIds, updatePoll,
 } from '../../global/reducers/messages';
 import { updateTabState } from '../../global/reducers/tabs';
 import { updateUsers } from '../../global/reducers/users';
@@ -38,6 +38,11 @@ export async function loadShare(shareId: string): Promise<ShareLoadStatus> {
   global = updateUsers(global, buildCollectionByKey([built.user, ...built.users], 'id'));
   global = updateChats(global, buildCollectionByKey([built.chat, ...built.chats], 'id'));
   global = addChatMessagesById(global, built.chatId, buildCollectionByKey(built.messages, 'id'));
+  built.polls.forEach((poll) => {
+    if (poll.summary?.id) {
+      global = updatePoll(global, poll.summary.id, { summary: poll.summary, results: poll.results });
+    }
+  });
   const messageIds = built.messages.map((message) => message.id);
   global = updateListedIds(global, built.chatId, MAIN_THREAD_ID, messageIds);
   global = safeReplaceViewportIds(global, built.chatId, MAIN_THREAD_ID, messageIds, tabId);
