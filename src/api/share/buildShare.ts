@@ -12,7 +12,7 @@
 import { Api as GramJs } from '../../lib/gramjs';
 
 import type {
-  ApiChat, ApiMessage, ApiMessagePoll, ApiThumbnail, ApiUser,
+  ApiChat, ApiDimensions, ApiMessage, ApiMessagePoll, ApiThumbnail, ApiUser,
 } from '../types';
 import type { ShareMediaEntry, ShareResponse } from './types';
 
@@ -162,7 +162,10 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
     const entry = media[photo.id];
     if (entry?.hosted && entry.url) {
       photo.blobUrl = entry.url;
-      if (!photo.thumbnail) photo.thumbnail = buildShareThumbnail(entry);
+      if (!photo.thumbnail) {
+        const photoSize = photo.sizes[photo.sizes.length - 1];
+        photo.thumbnail = buildShareThumbnail(entry, photoSize);
+      }
     }
   }
 
@@ -170,14 +173,19 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
     const entry = media[video.id];
     if (entry?.hosted && entry.url) {
       video.blobUrl = entry.url;
-      if (!video.thumbnail) video.thumbnail = buildShareThumbnail(entry);
+      if (!video.thumbnail) {
+        const videoSize = video.width !== undefined && video.height !== undefined
+          ? { width: video.width, height: video.height }
+          : video.previewPhotoSizes?.[video.previewPhotoSizes.length - 1];
+        video.thumbnail = buildShareThumbnail(entry, videoSize);
+      }
     }
   }
 
   if (document) {
     const entry = document.id ? media[document.id] : undefined;
     if (entry?.hosted && entry.thumbUrl) {
-      if (!document.thumbnail) document.thumbnail = buildShareThumbnail(entry);
+      if (!document.thumbnail) document.thumbnail = buildShareThumbnail(entry, document.mediaSize);
       if (!document.previewBlobUrl) document.previewBlobUrl = entry.thumbUrl;
     }
   }
@@ -185,7 +193,10 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
   if (sticker) {
     const entry = media[sticker.id];
     if (entry?.hosted && entry.thumbUrl && !sticker.thumbnail) {
-      sticker.thumbnail = buildShareThumbnail(entry);
+      const stickerDimensions = sticker.width !== undefined && sticker.height !== undefined
+        ? { width: sticker.width, height: sticker.height }
+        : sticker.previewPhotoSizes?.[sticker.previewPhotoSizes.length - 1];
+      sticker.thumbnail = buildShareThumbnail(entry, stickerDimensions);
     }
   }
 }
@@ -225,8 +236,12 @@ function applyUnhostedPlaceholder(message: ApiMessage, seq: number, data: ShareR
   return true;
 }
 
-function buildShareThumbnail(entry: ShareMediaEntry): ApiThumbnail | undefined {
-  return entry.thumbUrl
-    ? { dataUri: entry.thumbUrl, width: entry.width || 0, height: entry.height || 0 }
-    : undefined;
+function buildShareThumbnail(entry: ShareMediaEntry, dimensions?: ApiDimensions): ApiThumbnail | undefined {
+  if (!entry.thumbUrl) return undefined;
+
+  const width = entry.width ?? dimensions?.width;
+  const height = entry.height ?? dimensions?.height;
+  if (width === undefined || height === undefined) return undefined;
+
+  return { dataUri: entry.thumbUrl, width, height };
 }
