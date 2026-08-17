@@ -65,6 +65,7 @@ import captureEscKeyListener from '../../util/captureEscKeyListener';
 import { waitForTransitionEnd } from '../../util/cssAnimationEndListeners';
 import { isUserId } from '../../util/entities/ids';
 import { resolveTransitionName } from '../../util/resolveTransitionName';
+import { getShareContext } from '../../api/share/shareContext';
 import getHasMiddleFooter, { getHasFooterActionBar } from './helpers/getHasMiddleFooter';
 import { measureFooterContentHeight, syncMessageListBottomReserve } from './helpers/messageListReserves';
 
@@ -820,6 +821,8 @@ export default memo(withGlobal<OwnProps>(
       && !shouldBlockSendInForum
       && !shouldBlockSendInMonoforum
       && !isSavedDialog
+      // The share view is read-only (docs/PLAN.md, Phase 4): no composer
+      && !getShareContext()
       && (!isAccountFrozen || freezeAppealChat?.id === chatId);
     const isMuted = chat
       ? getIsChatMuted(chat, selectNotifyDefaults(global), selectNotifyException(global, chatId))

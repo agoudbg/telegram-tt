@@ -36,6 +36,7 @@ import { IS_TAURI } from '../../util/browser/globalEnvironment';
 import { IS_MAC_OS } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { isUserId } from '../../util/entities/ids';
+import { getShareContext } from '../../api/share/shareContext';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useConnectionStatus from '../../hooks/useConnectionStatus';
@@ -225,6 +226,11 @@ const MiddleHeader = ({
     lang, connectionState, isSyncing || isFetchingDifference, true,
   );
 
+  // The share view is read-only and has no live connection (docs/PLAN.md,
+  // Phase 4): suppress the "updating" connection subtitle
+  const isShareView = Boolean(getShareContext());
+  const headerStatusText = isShareView ? undefined : connectionStatusText;
+
   function renderInfoTitle() {
     if (messagesCount === undefined) {
       return lang('Loading');
@@ -284,7 +290,8 @@ const MiddleHeader = ({
     const displayChatId = chat?.isMonoforum ? chat.linkedMonoforumId! : realChatId;
     return (
       <>
-        {(isLeftColumnHideable || currentTransitionKey > 0) && renderBackButton(shouldShowCloseButton, !isSavedDialog)}
+        {!isShareView && (isLeftColumnHideable || currentTransitionKey > 0)
+          && renderBackButton(shouldShowCloseButton, !isSavedDialog)}
         <div
           className="chat-info-wrapper"
           onMouseDown={handleLongPressMouseDown}
@@ -299,8 +306,9 @@ const MiddleHeader = ({
               userId={displayChatId}
               threadId={!isSavedDialog ? threadId : undefined}
               typingStatusByPeerId={typingStatusByPeerId}
-              status={connectionStatusText || savedMessagesStatus}
+              status={headerStatusText || savedMessagesStatus}
               withDots={Boolean(connectionStatusText)}
+              noStatusOrTyping={isShareView}
               withFullInfo={threadId === MAIN_THREAD_ID}
               withMediaViewer={threadId === MAIN_THREAD_ID}
               withStory={!isChatWithSelf}
@@ -318,7 +326,7 @@ const MiddleHeader = ({
               threadId={!isSavedDialog ? threadId : undefined}
               typingStatusByPeerId={typingStatusByPeerId}
               withMonoforumStatus={chat?.isMonoforum}
-              status={connectionStatusText || savedMessagesStatus}
+              status={headerStatusText || savedMessagesStatus}
               withDots={Boolean(connectionStatusText)}
               withMediaViewer={threadId === MAIN_THREAD_ID}
               withFullInfo={threadId === MAIN_THREAD_ID}

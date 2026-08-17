@@ -8,11 +8,13 @@ import type { ShareLoadStatus } from '../../api/share/types';
 
 import buildClassName from '../../util/buildClassName';
 import { loadShare } from '../../api/share/loadShare';
+import { applyMiniAppTheme } from './miniAppTheme';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 
+import Wallpaper from '../common/Wallpaper';
 import MiddleColumn from '../middle/MiddleColumn';
 
 import styles from './ShareView.module.scss';
@@ -26,6 +28,10 @@ const ShareView = ({ shareId }: OwnProps) => {
   const lang = useLang();
   const leftColumnRef = useRef<HTMLDivElement>();
   const [status, setStatus] = useState<ShareLoadStatus | 'loading'>('loading');
+
+  useEffect(() => {
+    applyMiniAppTheme();
+  }, []);
 
   useEffect(() => {
     let isCurrent = true;
@@ -46,7 +52,7 @@ const ShareView = ({ shareId }: OwnProps) => {
   }
 
   return (
-    <div className={styles.root} data-share-id={shareId}>
+    <Wallpaper className={styles.root} isStatic>
       {status === 'ready' ? (
         <MiddleColumn
           leftColumnRef={leftColumnRef}
@@ -58,7 +64,7 @@ const ShareView = ({ shareId }: OwnProps) => {
           {renderStatus()}
         </div>
       )}
-    </div>
+    </Wallpaper>
   );
 };
 

@@ -36,6 +36,7 @@ import {
 import { ARE_CALLS_SUPPORTED, IS_APP } from '../../util/browser/windowEnvironment';
 import { isUserId } from '../../util/entities/ids';
 import focusNoScroll from '../../util/focusNoScroll';
+import { getShareContext } from '../../api/share/shareContext';
 
 import { useHotkeys } from '../../hooks/useHotkeys';
 import useLang from '../../hooks/useLang';
@@ -282,6 +283,10 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
       />
     );
   }, [isRightColumnShown, oldLang]);
+
+  // The share view is read-only (docs/PLAN.md, Phase 4): no search, call or
+  // menu actions in the header
+  if (getShareContext()) return undefined;
 
   return (
     <div className="HeaderActions">
