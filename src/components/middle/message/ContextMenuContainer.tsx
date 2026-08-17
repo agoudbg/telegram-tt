@@ -754,7 +754,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         canSendNow={isShareView ? undefined : canSendNow}
         canReschedule={isShareView ? undefined : canReschedule}
         canReply={isShareView ? undefined : canReply}
-        canQuote={selectionQuoteOffset !== UNQUOTABLE_OFFSET}
+        canQuote={!isShareView && selectionQuoteOffset !== UNQUOTABLE_OFFSET}
         canDelete={isShareView ? undefined : canDelete}
         canPin={isShareView ? undefined : canPin}
         canReport={isShareView ? undefined : canReport}
