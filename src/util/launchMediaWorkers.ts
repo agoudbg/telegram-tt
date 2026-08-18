@@ -13,7 +13,7 @@ let instances: {
 }[] | undefined;
 
 export default function launchMediaWorkers() {
-  if (IS_TEST) return [];
+  if (IS_TEST && typeof Worker === 'undefined') return [];
   if (!instances) {
     instances = new Array(MAX_WORKERS).fill(undefined).map(
       () => {

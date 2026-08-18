@@ -26,6 +26,7 @@ import {
   selectTabState,
 } from '../../global/selectors';
 import { isUserId } from '../../util/entities/ids';
+import { getShareContext } from '../../api/share/shareContext';
 import selectViewableMedia from './helpers/getViewableMedia';
 
 import useAppLayout from '../../hooks/useAppLayout';
@@ -72,6 +73,7 @@ type StateProps = {
   messageListType?: MessageListType;
   origin?: MediaViewerOrigin;
   viewableMedia?: ViewableMedia;
+  isShareView: boolean;
 };
 
 const MediaViewerActions: FC<OwnProps & StateProps> = ({
@@ -90,6 +92,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
   activeDownloads,
   origin,
   viewableMedia,
+  isShareView,
   onReportAvatar: onReport,
   onCloseMediaViewer,
   onBeforeDelete,
@@ -115,7 +118,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
 
   const { canSendPhotos } = getAllowedAttachmentOptions(chat, chatFullInfo);
   const canEditViewedMedia = Boolean(
-    message && !isMobile && !isProtected && !isChatProtected
+    message && !isShareView && !isMobile && !isProtected && !isChatProtected
     && message.chatId === chat?.id
     && canSendPhotos
     && canEditMediaInEditor(message),
@@ -266,7 +269,8 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
 
   if (isMobile) {
     const menuItems: MenuItemProps[] = [];
-    if (isMessage && item.message.isForwardingAllowed && !item.message.content.action && !isChatProtected) {
+    if (!isShareView && isMessage
+      && item.message.isForwardingAllowed && !item.message.content.action && !isChatProtected) {
       menuItems.push({
         icon: 'forward',
         onClick: onForward,
@@ -290,7 +294,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
       }
     }
 
-    if (canReportAvatar) {
+    if (!isShareView && canReportAvatar) {
       menuItems.push({
         icon: 'flag',
         onClick: onReport,
@@ -298,7 +302,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
       });
     }
 
-    if (canUpdate) {
+    if (!isShareView && canUpdate) {
       menuItems.push({
         icon: 'copy-media',
         onClick: handleUpdate,
@@ -306,7 +310,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
       });
     }
 
-    if (canDelete) {
+    if (!isShareView && canDelete) {
       menuItems.push({
         icon: 'delete',
         onClick: openDeleteModalHandler,
@@ -341,7 +345,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
           ))}
         </DropdownMenu>
         {isDownloading && <ProgressSpinner progress={downloadProgress} size="s" noCross />}
-        {canDelete && renderDeleteModal()}
+        {!isShareView && canDelete && renderDeleteModal()}
       </div>
     );
   }
@@ -358,7 +362,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
           iconName="edit"
         />
       )}
-      {isMessage && item.message.isForwardingAllowed && !isChatProtected && (
+      {!isShareView && isMessage && item.message.isForwardingAllowed && !isChatProtected && (
         <Button
           round
           size="smaller"
@@ -385,7 +389,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
         onClick={handleZoomIn}
         iconName="zoom-in"
       />
-      {canReportAvatar && (
+      {!isShareView && canReportAvatar && (
         <Button
           round
           size="smaller"
@@ -395,7 +399,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
           iconName="flag"
         />
       )}
-      {canUpdate && (
+      {!isShareView && canUpdate && (
         <Button
           round
           size="smaller"
@@ -405,7 +409,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
           iconName="copy-media"
         />
       )}
-      {canDelete && (
+      {!isShareView && canDelete && (
         <Button
           round
           size="smaller"
@@ -423,7 +427,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
         onClick={onCloseMediaViewer}
         iconName="close"
       />
-      {canDelete && renderDeleteModal()}
+      {!isShareView && canDelete && renderDeleteModal()}
     </div>
   );
 };
@@ -456,6 +460,7 @@ export default memo(withGlobal<OwnProps>(
     const messageListType = currentMessageList?.type;
     const viewableMedia = selectViewableMedia(global, origin, item);
     const withAnimation = selectPerformanceSettingsValue(global, 'mediaViewerAnimations');
+    const isShareView = Boolean(getShareContext());
 
     return {
       activeDownloads,
@@ -469,6 +474,7 @@ export default memo(withGlobal<OwnProps>(
       messageListType,
       origin,
       viewableMedia,
+      isShareView,
     };
   },
 )(MediaViewerActions));
