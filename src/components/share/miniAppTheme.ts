@@ -7,32 +7,14 @@
 
 import { getActions } from '../../global';
 
+import type { WebAppThemeParams } from '../../api/share/miniApp';
+
+import { getMiniApp } from '../../api/share/miniApp';
+
 // switchTheme writes its end-state inline styles asynchronously
 // (requestMutation) and animates for up to DURATION + ENABLE_DELAY ms, so
 // the themeParams overrides are applied once more after that window
 const THEME_SETTLE_MS = 800;
-
-interface WebAppThemeParams {
-  bg_color?: string;
-  text_color?: string;
-  hint_color?: string;
-  link_color?: string;
-  button_color?: string;
-  secondary_bg_color?: string;
-}
-
-interface TelegramWebApp {
-  colorScheme?: 'light' | 'dark';
-  themeParams?: WebAppThemeParams;
-  ready?: () => void;
-  expand?: () => void;
-}
-
-declare global {
-  interface Window {
-    Telegram?: { WebApp?: TelegramWebApp };
-  }
-}
 
 const THEME_PARAM_VARIABLES: Record<keyof WebAppThemeParams, string> = {
   bg_color: '--color-background',
@@ -44,11 +26,8 @@ const THEME_PARAM_VARIABLES: Record<keyof WebAppThemeParams, string> = {
 };
 
 export function applyMiniAppTheme() {
-  const webApp = window.Telegram?.WebApp;
+  const webApp = getMiniApp();
   if (!webApp) return;
-
-  webApp.ready?.();
-  webApp.expand?.();
 
   if (webApp.colorScheme === 'dark' || webApp.colorScheme === 'light') {
     getActions().setSharedSettingOption({ theme: webApp.colorScheme });

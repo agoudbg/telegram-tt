@@ -1,9 +1,11 @@
-// Share route parsing: the backend serves the share build at `/s/<shareId>`
-// (docs/PLAN.md, Phase 4). Everything else falls through to the regular app.
+// Share route parsing: the backend serves browser shares at `/s/<shareId>`;
+// Telegram direct links open the Mini App root and pass the id separately.
+
+import { getMiniAppShareId } from './miniApp';
 
 const SHARE_PATH_PATTERN = /^\/s\/([\w-]+)\/?$/;
 
-export function parseSharePath(pathname: string = window.location.pathname): string | undefined {
+export function parseShareId(pathname: string = window.location.pathname): string | undefined {
   const match = SHARE_PATH_PATTERN.exec(pathname);
-  return match ? match[1] : undefined;
+  return match ? match[1] : getMiniAppShareId();
 }

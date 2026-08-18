@@ -8,6 +8,7 @@ import type { ShareLoadStatus } from '../../api/share/types';
 
 import buildClassName from '../../util/buildClassName';
 import { loadShare } from '../../api/share/loadShare';
+import { initializeMiniApp } from '../../api/share/miniApp';
 import { clearShareContext } from '../../api/share/shareContext';
 import { applyMiniAppTheme } from './miniAppTheme';
 
@@ -20,7 +21,7 @@ import MiddleColumn from '../middle/MiddleColumn';
 
 import styles from './ShareView.module.scss';
 
-type OwnProps = {
+export type OwnProps = {
   shareId: string;
 };
 
@@ -31,14 +32,17 @@ const ShareView = ({ shareId }: OwnProps) => {
   const [status, setStatus] = useState<ShareLoadStatus | 'loading'>('loading');
 
   useEffect(() => {
-    applyMiniAppTheme();
+    initializeMiniApp();
   }, []);
 
   useEffect(() => {
     let isCurrent = true;
     const controller = new AbortController();
     void loadShare(shareId, controller.signal).then((loadStatus) => {
-      if (isCurrent) setStatus(loadStatus);
+      if (isCurrent) {
+        setStatus(loadStatus);
+        if (loadStatus === 'ready') applyMiniAppTheme();
+      }
     });
     return () => {
       isCurrent = false;
