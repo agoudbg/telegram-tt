@@ -44,6 +44,7 @@ export interface BuiltShare {
    *  stores `content.pollId`; the renderer reads the rest from state) */
   polls: ApiMessagePoll[];
   avatars: Record<string, string>;
+  nestedForwardMessageIds: Set<number>;
 }
 
 export function buildShare(data: ShareResponse): BuiltShare | undefined {
@@ -94,12 +95,18 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
 
   const messages: ApiMessage[] = [];
   const polls: ApiMessagePoll[] = [];
+  const nestedForwardMessageIds = new Set<number>();
   data.messages.forEach((entry) => {
     const tlMessage = hydrateTL(entry.message, registry) as GramJs.TypeMessage;
     const apiMessage = buildApiMessage(tlMessage);
     if (apiMessage) {
       wireShareMedia(apiMessage, entry.seq, data);
-      if (entry.nestedForward) degradeForwardOrigin(apiMessage, peerNames);
+      if (entry.nestedForward) {
+        degradeForwardOrigin(apiMessage, peerNames);
+        nestedForwardMessageIds.add(apiMessage.id);
+      } else {
+        promoteForwardOriginToSender(apiMessage);
+      }
       messages.push(apiMessage);
       const poll = tlMessage instanceof GramJs.Message && tlMessage.media
         ? buildMessagePollFromMedia(tlMessage.media)
@@ -127,8 +134,21 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   };
 
   return {
-    chatId, chat, user, users, chats, messages, polls, avatars,
+    chatId, chat, user, users, chats, messages, polls, avatars, nestedForwardMessageIds,
   };
+}
+
+// A regular first-hop forward represents the original sender in the share
+// reconstruction. Keep forwardInfo as source metadata, but use its origin for
+// standard sender grouping, names, and avatars. Hidden origins use the
+// virtual peer only as a stable grouping key; the renderer still reads their
+// plain-text name from forwardInfo.
+function promoteForwardOriginToSender(message: ApiMessage) {
+  const forwardInfo = message.forwardInfo;
+  if (!forwardInfo) return;
+
+  message.senderId = forwardInfo.fromId || forwardInfo.fromChatId || message.chatId;
+  if (forwardInfo.hiddenUserName) message.postAuthorTitle = forwardInfo.hiddenUserName;
 }
 
 // A nestedForward flag means the origin attribution is unreliable (the

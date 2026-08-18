@@ -14,6 +14,7 @@ export interface ShareContext {
   shareId: string;
   media: Record<string, ShareMediaEntry>;
   avatars: Record<string, string>;
+  nestedForwardMessageIds: Set<number>;
   messageBuilderCurrentUserId: string | undefined;
 }
 

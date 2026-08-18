@@ -34,6 +34,7 @@ import {
   selectSender,
 } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
+import { getShareContext } from '../../../api/share/shareContext';
 
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
 import useFlag from '../../../hooks/useFlag';
@@ -119,9 +120,11 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
     setTimeout(markShown, appearanceOrder * MESSAGE_APPEARANCE_DELAY);
   }, [appearanceOrder, noAppearanceAnimation]);
 
+  const isShareView = Boolean(getShareContext());
   const shouldPreferOriginSender = forwardInfo
-    && (isChatWithSelf || isRepliesChat || isAnonymousForwards || !messageSender);
+    && (isShareView || isChatWithSelf || isRepliesChat || isAnonymousForwards || !messageSender);
   const avatarPeer = shouldPreferOriginSender ? originSender : messageSender;
+  const shouldHideShareAvatar = isShareView && Boolean(forwardInfo?.hiddenUserName) && !originSender;
   const isAvatarPeerUser = avatarPeer && isApiPeerUser(avatarPeer);
 
   const handleOpenChat = useLastCallback(() => {
@@ -167,7 +170,7 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
     ref: avatarRef,
     shouldRender,
   } = useShowTransition({
-    isOpen: withAvatar && isShown,
+    isOpen: withAvatar && !shouldHideShareAvatar && isShown,
     noMountTransition: isShown,
     withShouldRender: true,
   });

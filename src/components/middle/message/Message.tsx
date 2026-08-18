@@ -138,6 +138,7 @@ import { parseTranslationCacheKey } from '../../../util/keys/translationKey';
 import { getServerTime } from '../../../util/serverTime';
 import stopEvent from '../../../util/stopEvent';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
+import { getShareContext } from '../../../api/share/shareContext';
 import { calculateDimensionsForMessageMedia, getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 import { getCustomEmojiSize } from '../composer/helpers/customEmoji';
@@ -617,9 +618,11 @@ const Message = ({
   const hasAnimatedEmoji = isCustomShape && (animatedEmoji || animatedCustomEmoji);
   const hasReactions = reactionMessage?.reactions && !areReactionsEmpty(reactionMessage.reactions);
   const hasViaSender = Boolean(viaBotId || guestChatViaId);
+  const shareContext = getShareContext();
 
   const asForwarded = (
     forwardInfo
+    && (!shareContext || shareContext.nestedForwardMessageIds.has(messageId))
     && (!isChatWithSelf || isScheduled)
     && !isRepliesChat
     && !forwardInfo.isLinkedChannelPost

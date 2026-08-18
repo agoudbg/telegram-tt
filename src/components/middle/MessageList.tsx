@@ -71,6 +71,7 @@ import resetScroll from '../../util/resetScroll';
 import { debounce, onTickEnd } from '../../util/schedulers';
 import { getServerTime } from '../../util/serverTime';
 import getOffsetToContainer from '../../util/visibility/getOffsetToContainer';
+import { getShareContext } from '../../api/share/shareContext';
 import { REM } from '../common/helpers/mediaDimensions';
 import { groupMessages } from './helpers/groupMessages';
 import { requestMessageListReflow } from './helpers/messageListReflow';
@@ -324,7 +325,7 @@ const MessageList = ({
   const areMessagesLoaded = Boolean(messageIds);
 
   const isPrivate = isUserId(chatId);
-  const withUsers = Boolean((!isPrivate && !isChannelChat)
+  const withUsers = Boolean(getShareContext() || (!isPrivate && !isChannelChat)
     || isChatWithSelf || isSystemBotChat || isAnonymousForwards || isChannelWithAvatars);
 
   const liveTailStartOriginalId = useMemo(() => {

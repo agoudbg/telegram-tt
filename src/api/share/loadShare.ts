@@ -49,6 +49,7 @@ export async function loadShare(shareId: string, signal?: AbortSignal): Promise<
     shareId,
     media: result.data.media,
     avatars: built.avatars,
+    nestedForwardMessageIds: built.nestedForwardMessageIds,
     messageBuilderCurrentUserId: previousMessageBuilderCurrentUserId,
   });
 

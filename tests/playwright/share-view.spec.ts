@@ -53,9 +53,10 @@ test.describe('read-only share view', () => {
     await expect(page.getByText('hello.txt', { exact: true })).toBeVisible();
     await expect(page.getByText('View in Telegram', { exact: true })).toBeVisible();
 
-    // Forward origins and service message
-    await expect(page.locator('.sender-title')).toHaveCount(4);
+    // Origin identities and service message
+    await expect(page.locator('.sender-title').filter({ hasText: 'Alice Example' }).first()).toBeVisible();
     await expect(page.getByText('Hidden User', { exact: true })).toBeVisible();
+    await expect(page.getByText('Forwarded from', { exact: true })).toHaveCount(0);
     await expect(page.getByText(/changed group name to/).last()).toBeVisible();
 
     // Read-only trimming
@@ -85,6 +86,26 @@ test.describe('read-only share view', () => {
       animations: 'disabled',
     });
     expect(unexpectedErrors).toEqual([]);
+  });
+
+  test('renders ordinary origins as standard senders', async ({ page }) => {
+    await page.goto('/s/demo-type-text', { waitUntil: 'domcontentloaded' });
+    await waitForShareReady(page);
+
+    const message = page.locator('.Message:visible').first();
+    await expect(message.getByText('Alice Example', { exact: true })).toBeVisible();
+    await expect(message.getByText('Forwarded from', { exact: true })).toHaveCount(0);
+    await expect(page.locator('.sender-group-container .Avatar').first()).toBeVisible();
+  });
+
+  test('reserves the forwarded header for nested forwards', async ({ page }) => {
+    await page.goto('/s/demo-type-nested', { waitUntil: 'domcontentloaded' });
+    await waitForShareReady(page);
+
+    const message = page.locator('.Message:visible').first();
+    await expect(message.getByText('Forwarded from', { exact: true })).toBeVisible();
+    await expect(message.getByText('Alice Example', { exact: true })).toBeVisible();
+    await expect(page.locator('.sender-group-container .Avatar')).toHaveCount(0);
   });
 
   for (const [type, text] of TYPE_FIXTURES) {
