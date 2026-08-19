@@ -577,17 +577,22 @@ function MiddleColumn({
       />
       {Boolean(renderingChatId && renderingThreadId) && (
         <>
-          <div className="messages-layout" onDragEnter={renderingCanPost ? handleDragEnter : undefined}>
-            <MiddleHeader
-              chatId={renderingChatId!}
-              threadId={renderingThreadId!}
-              messageListType={renderingMessageListType!}
-              isComments={isComments}
-              isMobile={isMobile}
-              getCurrentPinnedIndex={getCurrentPinnedIndex}
-              getLoadingPinnedId={getLoadingPinnedId}
-              onFocusPinnedMessage={handleFocusPinnedMessage}
-            />
+          <div
+            className={buildClassName('messages-layout', isShareView && 'share-view')}
+            onDragEnter={renderingCanPost ? handleDragEnter : undefined}
+          >
+            {!isShareView && (
+              <MiddleHeader
+                chatId={renderingChatId!}
+                threadId={renderingThreadId!}
+                messageListType={renderingMessageListType!}
+                isComments={isComments}
+                isMobile={isMobile}
+                getCurrentPinnedIndex={getCurrentPinnedIndex}
+                getLoadingPinnedId={getLoadingPinnedId}
+                onFocusPinnedMessage={handleFocusPinnedMessage}
+              />
+            )}
             <MiddleHeaderPanesIsland
               chatId={renderingChatId!}
               threadId={renderingThreadId!}

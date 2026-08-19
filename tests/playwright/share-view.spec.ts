@@ -67,6 +67,7 @@ test.describe('read-only share view', () => {
 
     // Read-only trimming
     await expect(page.locator('#message-input-text')).toHaveCount(0);
+    await expect(page.locator('.MiddleHeader')).toHaveCount(0);
     await expect(page.locator('.HeaderActions button')).toHaveCount(0);
 
     if (testInfo.project.name === 'chromium') {

@@ -29,6 +29,11 @@
     width: 100%;
     height: 100%;
 
+    &.share-view {
+      --middle-header-height: 0rem;
+      --middle-header-gap: 0rem;
+    }
+
     > .Transition {
       overflow: hidden;
       width: 100%;
