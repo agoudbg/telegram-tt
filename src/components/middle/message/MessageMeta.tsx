@@ -13,6 +13,7 @@ import { formatDateTime, isSameLocalDay, secondsToDate } from '../../../util/loc
 import { formatStarsAsIcon } from '../../../util/localization/format';
 import { getRepeatPeriodText } from '../../../util/scheduledMessages';
 import { formatIntegerCompact } from '../../../util/textFormat';
+import { isShareViewActive } from '../../../api/share/shareInteractionPolicy';
 import renderText from '../../common/helpers/renderText';
 
 import useFlag from '../../../hooks/useFlag';
@@ -71,6 +72,7 @@ const MessageMeta = ({
 
   const oldLang = useOldLang();
   const lang = useLang();
+  const isShareView = isShareViewActive();
 
   function handleImportedClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -96,7 +98,7 @@ const MessageMeta = ({
     const createDateTime = formatDateTimeToString(message.date * 1000, oldLang.code, undefined, oldLang.timeFormat);
     const editDateTime = message.isEdited
       && formatDateTimeToString(message.editDate! * 1000, oldLang.code, undefined, oldLang.timeFormat);
-    const forwardedDateTime = message.forwardInfo
+    const forwardedDateTime = !isShareView && message.forwardInfo
       && formatDateTimeToString(
         (message.forwardInfo.savedDate || message.forwardInfo.date) * 1000,
         oldLang.code,
@@ -117,7 +119,7 @@ const MessageMeta = ({
     return text;
     // We need to listen to timeformat change
     // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps
-  }, [isActivated, oldLang, message, oldLang.timeFormat]);
+  }, [isActivated, isShareView, oldLang, message, oldLang.timeFormat]);
 
   const viewsTitle = useMemo(() => {
     if (!message.viewsCount) return undefined;
