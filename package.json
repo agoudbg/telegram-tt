@@ -31,6 +31,7 @@
     "gramjs:tl": "tsx ./src/lib/gramjs/tl/generateModules.ts",
     "lang:ts": "tsx ./dev/generateLangTypes.js",
     "lang:initial": "tsx ./dev/generateInitialLangFallback.js",
+    "lang:share-legacy": "tsx ./dev/generateShareLegacyLang.ts",
     "icons:build": "tsx ./dev/buildIcons.ts",
     "test": "cross-env APP_ENV=test vitest run --silent=true",
     "test:playwright": "playwright test",

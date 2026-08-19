@@ -107,6 +107,7 @@ const PLURAL_RULES = {
 const cache = new Map<string, string>();
 
 let langPack: ApiOldLangPack | undefined;
+let shareFallbackLoadPromise: Promise<void> | undefined;
 
 const {
   addCallback,
@@ -149,6 +150,23 @@ export function oldTranslate(...args: Parameters<LangFn>) {
 
 export function getTranslationFn(): LangFn {
   return translationFn;
+}
+
+export function ensureShareLegacyLangPack(): Promise<void> {
+  if (langPack) return Promise.resolve();
+
+  shareFallbackLoadPromise ||= import('../assets/localization/shareLegacy.json').then(({ default: fallbackPack }) => {
+    if (langPack) return;
+
+    currentLangCode = FALLBACK_LANG_CODE;
+    langPack = fallbackPack as ApiOldLangPack;
+    translationFn = createLangFn();
+    translationFn.code = FALLBACK_LANG_CODE;
+    translationFn.timeFormat = currentTimeFormat;
+    runCallbacks();
+  });
+
+  return shareFallbackLoadPromise;
 }
 
 /**

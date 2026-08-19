@@ -17,6 +17,7 @@ import { updateUsers } from '../../global/reducers/users';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import { buildCollectionByKey } from '../../util/iteratees';
 import { ensureFallbackLangPack } from '../../util/localization';
+import { ensureShareLegacyLangPack } from '../../util/oldLangProvider';
 import {
   getMessageBuilderCurrentUserId,
   restoreMessageBuilderCurrentUserId,
@@ -34,7 +35,7 @@ export async function loadShare(shareId: string, signal?: AbortSignal): Promise<
 
   // Placeholder texts and button labels are baked into the built messages,
   // so the fallback language pack must be loaded first
-  await ensureFallbackLangPack();
+  await Promise.all([ensureFallbackLangPack(), ensureShareLegacyLangPack()]);
   const result = await fetchShare(shareId, signal);
   if (result.status !== 'ok') return result.status;
   if (signal?.aborted) return 'error';
