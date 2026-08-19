@@ -12,7 +12,7 @@ const env = {
   ...process.env,
   SANITIZE_SECRET: 'playwright-secret',
   DATA_DIR: dataDir,
-  PORT: '3000',
+  PORT: process.env.SHARE_TEST_API_PORT || '3000',
   BOT_USERNAME: 'examplebot',
 };
 
@@ -32,12 +32,12 @@ execFileSync(
   { cwd: repoDir, env, stdio: 'inherit' },
 );
 
+const cleanup = () => rmSync(dataDir, { recursive: true, force: true });
 const server = spawn(process.execPath, ['apps/server/dist/main.js'], {
   cwd: repoDir,
   env,
   stdio: 'inherit',
 });
-const cleanup = () => rmSync(dataDir, { recursive: true, force: true });
 server.on('exit', (code) => {
   cleanup();
   process.exit(code ?? 0);

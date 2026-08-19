@@ -1,5 +1,7 @@
 import { devices, type PlaywrightTestConfig } from '@playwright/test';
 
+const shareApiPort = Number(process.env.SHARE_TEST_API_PORT || 3000);
+
 const config: PlaywrightTestConfig = {
   testDir: 'tests/playwright',
   timeout: process.env.CI ? 60 * 5 * 1000 : 30 * 1000,
@@ -8,7 +10,7 @@ const config: PlaywrightTestConfig = {
   webServer: [
     {
       command: 'node tests/playwright/start-share-api.mjs',
-      port: 3000,
+      port: shareApiPort,
       timeout: 120 * 1000,
       reuseExistingServer: false,
     },
