@@ -100,6 +100,7 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
     const tlMessage = hydrateTL(entry.message, registry) as GramJs.TypeMessage;
     const apiMessage = buildApiMessage(tlMessage);
     if (apiMessage) {
+      if (apiMessage.forwardInfo) apiMessage.date = apiMessage.forwardInfo.date;
       wireShareMedia(apiMessage, entry.seq, data);
       if (entry.nestedForward) {
         degradeForwardOrigin(apiMessage, peerNames);
