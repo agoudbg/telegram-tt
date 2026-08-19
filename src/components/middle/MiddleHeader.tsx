@@ -318,7 +318,7 @@ const MiddleHeader = ({
               storyViewerOrigin={StoryViewerOrigin.MiddleHeaderAvatar}
               emojiStatusSize={EMOJI_STATUS_SIZE}
               noRtl
-              onEmojiStatusClick={handleUserStatusClick}
+              onEmojiStatusClick={isShareView ? undefined : handleUserStatusClick}
             />
           ) : (
             <GroupChatInfo
@@ -336,7 +336,7 @@ const MiddleHeader = ({
               isSavedDialog={isSavedDialog}
               storyViewerOrigin={StoryViewerOrigin.MiddleHeaderAvatar}
               emojiStatusSize={EMOJI_STATUS_SIZE}
-              onEmojiStatusClick={handleChannelStatusClick}
+              onEmojiStatusClick={isShareView ? undefined : handleChannelStatusClick}
               noRtl
             />
           )}

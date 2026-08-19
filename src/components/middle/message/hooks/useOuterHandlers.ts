@@ -36,6 +36,7 @@ export default function useOuterHandlers(
   quickReactionRef: ElementRef<HTMLDivElement>,
   shouldHandleMouseLeave: boolean,
   getIsMessageListReady?: Signal<boolean>,
+  isShareView?: boolean,
 ) {
   const { updateDraftReplyInfo, sendDefaultReaction } = getActions();
 
@@ -69,6 +70,8 @@ export default function useOuterHandlers(
   }, [quickReactionRef], requestMeasure);
 
   function handleSendQuickReaction(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    if (isShareView) return;
+
     e.stopPropagation();
     sendDefaultReaction({
       chatId,
@@ -94,6 +97,8 @@ export default function useOuterHandlers(
   }
 
   function handleDoubleTap() {
+    if (isShareView) return;
+
     sendDefaultReaction({
       chatId,
       messageId,
@@ -101,6 +106,8 @@ export default function useOuterHandlers(
   }
 
   function handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    if (isShareView) return;
+
     if (isInSelectMode) {
       selectMessage(e);
       return;
@@ -135,7 +142,7 @@ export default function useOuterHandlers(
   }
 
   function handleContainerDoubleClick() {
-    if (IS_TOUCH_ENV || !canReply) return;
+    if (isShareView || IS_TOUCH_ENV || !canReply) return;
 
     updateDraftReplyInfo({
       replyToMsgId: messageId, replyToPeerId: undefined, quoteText: undefined, quoteOffset: undefined,
@@ -147,7 +154,9 @@ export default function useOuterHandlers(
   }
 
   useEffect(() => {
-    if (!IS_TOUCH_ENV || isInSelectMode || !canReply || isContextMenuShown || !getIsMessageListReady?.()) {
+    if (
+      isShareView || !IS_TOUCH_ENV || isInSelectMode || !canReply || isContextMenuShown || !getIsMessageListReady?.()
+    ) {
       return undefined;
     }
 
@@ -180,7 +189,7 @@ export default function useOuterHandlers(
       },
     });
   }, [
-    containerRef, isInSelectMode, messageId, markSwiped, unmarkSwiped, canReply, isContextMenuShown,
+    containerRef, isInSelectMode, messageId, markSwiped, unmarkSwiped, canReply, isContextMenuShown, isShareView,
     getIsMessageListReady,
   ]);
 
@@ -197,7 +206,7 @@ export default function useOuterHandlers(
     handleContextMenu: !isInSelectMode ? handleContextMenu : (isProtected ? stopEvent : undefined),
     handleDoubleClick: !isInSelectMode ? handleContainerDoubleClick : undefined,
     handleContentDoubleClick: !IS_TOUCH_ENV ? stopPropagation : undefined,
-    handleMouseMove,
+    handleMouseMove: isShareView ? undefined : handleMouseMove,
     handleSendQuickReaction,
     handleMouseLeave,
     isSwiped,

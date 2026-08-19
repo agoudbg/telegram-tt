@@ -36,7 +36,7 @@ import {
 import { ARE_CALLS_SUPPORTED, IS_APP } from '../../util/browser/windowEnvironment';
 import { isUserId } from '../../util/entities/ids';
 import focusNoScroll from '../../util/focusNoScroll';
-import { getShareContext } from '../../api/share/shareContext';
+import { isShareViewActive } from '../../api/share/shareInteractionPolicy';
 
 import { useHotkeys } from '../../hooks/useHotkeys';
 import useLang from '../../hooks/useLang';
@@ -140,6 +140,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
   const menuButtonRef = useRef<HTMLButtonElement>();
   const oldLang = useOldLang();
   const lang = useLang();
+  const isShareView = isShareViewActive();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<IAnchorPosition | undefined>(undefined);
@@ -265,9 +266,9 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
     setSettingOption({ translationTone: tone });
   });
 
-  useHotkeys(useMemo(() => ({
+  useHotkeys(useMemo(() => (isShareView ? undefined : {
     'Mod+F': handleHotkeySearchClick,
-  }), []));
+  }), [isShareView, handleHotkeySearchClick]));
 
   const MoreMenuButton: FC<{ onTrigger: () => void; isOpen?: boolean }> = useMemo(() => {
     return ({ onTrigger, isOpen }) => (
@@ -286,7 +287,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
 
   // The share view is read-only (docs/PLAN.md, Phase 4): no search, call or
   // menu actions in the header
-  if (getShareContext()) return undefined;
+  if (isShareView) return undefined;
 
   return (
     <div className="HeaderActions">

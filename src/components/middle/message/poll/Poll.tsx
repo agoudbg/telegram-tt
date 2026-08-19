@@ -27,6 +27,7 @@ import buildClassName from '../../../../util/buildClassName';
 import { buildCollectionByKey, shuffle } from '../../../../util/iteratees';
 import { NEXT_ARROW_REPLACEMENT, PREVIOUS_ARROW_REPLACEMENT } from '../../../../util/localization/format';
 import { getServerTime } from '../../../../util/serverTime';
+import { isShareViewActive } from '../../../../api/share/shareInteractionPolicy';
 import { renderTextWithEntities } from '../../../common/helpers/renderTextWithEntities';
 import {
   canVoteInPollAsSubscriber,
@@ -104,6 +105,7 @@ const Poll = ({
   const { appendPollAnswer } = getPromiseActions();
   const lang = useLang();
   const serverTime = getServerTime();
+  const isShareView = isShareViewActive();
 
   const { summary, results, attachedMedia } = poll;
   const { answers, question, isMultipleChoice } = summary;
@@ -128,7 +130,7 @@ const Poll = ({
     summary.shouldHideResultsUntilClose && activeCloseDate && !summary.isCreator,
   );
   const hasMaskedResults = areResultsHiddenForCurrentUser && hasChosenAnswer;
-  const canVote = !summary.isClosed && !hasChosenAnswer;
+  const canVote = !isShareView && !summary.isClosed && !hasChosenAnswer;
   const hasExplanation = summary.isQuiz && Boolean(results.solution?.trim() || results.solutionMedia);
   const hasOptionMedia = useMemo(
     () => answers.some((answer) => hasPollOptionMedia(answer)),
@@ -154,15 +156,15 @@ const Poll = ({
   const canClickVoteOptions = canVote && !isSendingVote && !isViewingAuthorResults;
   const canShowRestrictedResults = (isSubscriberVoteRestricted || isCountryVoteRestricted)
     && hasResultData && !areResultsHiddenForCurrentUser;
-  const canToggleAuthorResults = summary.isCreator && canVote && hasResultData && totalVoters > 0;
+  const canToggleAuthorResults = !isShareView && summary.isCreator && canVote && hasResultData && totalVoters > 0;
   const areInlineResultsVisible = hasResultData && (
     (!canVote && !areResultsHiddenForCurrentUser) || isViewingAuthorResults || canShowRestrictedResults
   );
-  const canShowResultsPanel = (
+  const canShowResultsPanel = !isShareView && (
     hasChosenAnswer || canShowRestrictedResults
   ) && summary.isPublic && hasResultData && !areResultsHiddenForCurrentUser;
   const canShowExplanation = hasExplanation && hasChosenAnswer;
-  const canAppendAnswer = Boolean(
+  const canAppendAnswer = !isShareView && Boolean(
     summary.canAddAnswers && !summary.isClosed && !isInScheduled && answers.length < pollMaxAnswers,
   );
   const trimmedNewAnswerText = newAnswerText.trim().substring(0, MAX_OPTION_LENGTH);

@@ -139,6 +139,7 @@ import { getServerTime } from '../../../util/serverTime';
 import stopEvent from '../../../util/stopEvent';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
 import { getShareContext } from '../../../api/share/shareContext';
+import { isShareViewInlineButtonAllowed } from '../../../api/share/shareInteractionPolicy';
 import { calculateDimensionsForMessageMedia, getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 import { getCustomEmojiSize } from '../composer/helpers/customEmoji';
@@ -504,6 +505,7 @@ const Message = ({
     markMentionsRead,
     markPollVotesRead,
     openThread,
+    openUrl,
     summarizeMessage,
   } = getActions();
 
@@ -619,6 +621,7 @@ const Message = ({
   const hasReactions = reactionMessage?.reactions && !areReactionsEmpty(reactionMessage.reactions);
   const hasViaSender = Boolean(viaBotId || guestChatViaId);
   const shareContext = getShareContext();
+  const isShareView = Boolean(shareContext);
 
   const asForwarded = (
     forwardInfo
@@ -641,13 +644,14 @@ const Message = ({
   const isInDocumentGroupNotLast = isInDocumentGroup && !isLastInDocumentGroup;
   const isContextMenuShown = contextMenuAnchor !== undefined;
   const canShowActionButton = (
-    !(isContextMenuShown || isInSelectMode || isForwarding)
+    !isShareView
+    && !(isContextMenuShown || isInSelectMode || isForwarding)
     && !isInDocumentGroupNotLast
     && !isStoryMention
   );
-  const canForward = isChannel && !isScheduled && message.isForwardingAllowed
+  const canForward = !isShareView && isChannel && !isScheduled && message.isForwardingAllowed
     && !isChatProtected;
-  const canFocus = Boolean(isPinnedList
+  const canFocus = !isShareView && Boolean(isPinnedList
     || (forwardInfo
       && (forwardInfo.isChannelPost || isChatWithSelf || isRepliesChat || isAnonymousForwards)
       && forwardInfo.fromMessageId
@@ -660,7 +664,7 @@ const Message = ({
     || Boolean(isShowingSummary && summary?.text);
 
   const selectMessage = useLastCallback((e?: React.MouseEvent<HTMLDivElement, MouseEvent>, groupedId?: string) => {
-    if (isAccountFrozen) return;
+    if (isShareView || isAccountFrozen) return;
     toggleMessageSelection({
       messageId,
       groupedId,
@@ -707,6 +711,7 @@ const Message = ({
     quickReactionRef,
     isInDocumentGroupNotLast,
     getIsMessageListReady,
+    isShareView,
   );
 
   const {
@@ -754,6 +759,7 @@ const Message = ({
     isRepliesChat,
     isSavedMessages: isChatWithSelf,
     lastPlaybackTimestamp,
+    isShareView,
   });
 
   useEffect(() => {
@@ -1246,7 +1252,8 @@ const Message = ({
         signature={signature}
         withReactionOffset={reactionsPosition === 'inside'}
         renderQuickReactionButton={
-          withQuickReactionButton && quickReactionPosition === 'in-meta' ? renderQuickReactionButton : undefined
+          !isShareView && withQuickReactionButton && quickReactionPosition === 'in-meta'
+            ? renderQuickReactionButton : undefined
         }
         availableReactions={availableReactions}
         isTranslated={Boolean(requestedTranslationLanguage ? currentTranslatedText : undefined)}
@@ -1302,7 +1309,7 @@ const Message = ({
             {hasTopicChip && (
               <TopicChip
                 topic={messageTopic}
-                onClick={handleTopicChipClick}
+                onClick={isShareView ? undefined : handleTopicChipClick}
                 className="message-topic"
               />
             )}
@@ -1751,6 +1758,18 @@ const Message = ({
     });
   });
 
+  const handleShareInlineButtonClick = useLastCallback((button: ApiKeyboardButton) => {
+    if (button.type !== 'url' || !isShareViewInlineButtonAllowed(button)) {
+      return;
+    }
+
+    openUrl({ url: button.url });
+  });
+
+  const visibleInlineButtons = isShareView
+    ? message.inlineButtons?.map((row) => row.filter(isShareViewInlineButtonAllowed)).filter((row) => row.length)
+    : message.inlineButtons;
+
   const handleLocalInlineButtonClick = useLastCallback((button: ApiKeyboardButton) => {
     if (button.type === 'openThread') {
       openThread({
@@ -1819,7 +1838,7 @@ const Message = ({
           <span
             className={buildClassName(
               'message-title-name-container',
-              forwardInfo?.hiddenUserName ? 'sender-hidden' : 'interactive',
+              forwardInfo?.hiddenUserName ? 'sender-hidden' : !isShareView && 'interactive',
             )}
             dir="ltr"
           >
@@ -1835,7 +1854,7 @@ const Message = ({
               )}
               <span
                 className="sender-title"
-                onClick={handleSenderClick}
+                onClick={isShareView ? undefined : handleSenderClick}
               >
                 {senderTitle ? renderText(senderTitle) : (asForwarded ? NBSP : undefined)}
               </span>
@@ -1856,22 +1875,22 @@ const Message = ({
           NBSP
         ) : undefined}
         {botSender?.hasUsername && (
-          <span className="interactive via-sender">
+          <span className={buildClassName(!isShareView && 'interactive', 'via-sender')}>
             <span className="via">{lang('ViaBot')}</span>
             <span
               className="sender-title"
-              onClick={handleViaBotClick}
+              onClick={isShareView ? undefined : handleViaBotClick}
             >
               {renderText(`@${getMainUsername(botSender)}`)}
             </span>
           </span>
         )}
         {guestFromSenderTitle && (
-          <span className="interactive via-sender">
+          <span className={buildClassName(!isShareView && 'interactive', 'via-sender')}>
             <span className="via">{lang('ForBot')}</span>
             <span
               className="sender-title"
-              onClick={handleGuestForClick}
+              onClick={isShareView ? undefined : handleGuestForClick}
             >
               {renderText(guestFromSenderTitle)}
             </span>
@@ -1892,7 +1911,7 @@ const Message = ({
                 isOwner={senderChatMember?.isOwner}
                 rank={senderChatMember?.rank || fromRank}
                 className="admin-title-badge"
-                isClickable
+                isClickable={!isShareView}
               />
             ) : undefined) : undefined}
             {canShowSenderBoosts && (
@@ -2073,7 +2092,7 @@ const Message = ({
               </div>
             </div>
           )}
-          {withCommentButton && !isCustomShape && (
+          {!isShareView && withCommentButton && !isCustomShape && (
             <CommentButton
               threadInfo={commentsThreadInfo}
               disabled={noComments || !commentsThreadInfo}
@@ -2081,12 +2100,16 @@ const Message = ({
             />
           )}
           {withAppendix && <MessageAppendix isOwn={isOwn} />}
-          {withQuickReactionButton && quickReactionPosition === 'in-content' && renderQuickReactionButton()}
+          {!isShareView && withQuickReactionButton && quickReactionPosition === 'in-content'
+            && renderQuickReactionButton()}
         </div>
-        {message.inlineButtons && (
-          <InlineButtons inlineButtons={message.inlineButtons} onClick={handleInlineButtonClick} />
-        )}
-        {additionalInlineButtons && (
+        {visibleInlineButtons?.length ? (
+          <InlineButtons
+            inlineButtons={visibleInlineButtons}
+            onClick={isShareView ? handleShareInlineButtonClick : handleInlineButtonClick}
+          />
+        ) : undefined}
+        {!isShareView && additionalInlineButtons && (
           <InlineButtons
             inlineButtons={additionalInlineButtons}
             onClick={handleLocalInlineButtonClick}

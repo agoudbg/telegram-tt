@@ -78,6 +78,7 @@ const ReactionButton = ({
   const lang = useLang();
 
   const isPaid = reaction.reaction.type === 'paid';
+  const isInteractive = isPaid ? Boolean(onPaidClick) : Boolean(onClick);
 
   const starsState = useSelector(selectStarsState);
   const areStarsLoaded = Boolean(starsState);
@@ -87,6 +88,10 @@ const ReactionButton = ({
   });
 
   const handleClick = useLastCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    if (!isInteractive) {
+      return;
+    }
+
     if (reaction.reaction.type === 'paid') {
       e.stopPropagation(); // Prevent default message double click behavior
       handlePaidClick();
@@ -103,7 +108,14 @@ const ReactionButton = ({
     handleContextMenu,
     handleContextMenuClose,
     handleContextMenuHide,
-  } = useContextMenuHandlers(ref, reaction.reaction.type !== 'paid', undefined, undefined, undefined, true);
+  } = useContextMenuHandlers(
+    ref,
+    isInteractive && reaction.reaction.type !== 'paid',
+    undefined,
+    undefined,
+    undefined,
+    true,
+  );
 
   useEffect(() => {
     if (isContextMenuOpen) {
@@ -181,9 +193,9 @@ const ReactionButton = ({
       )}
       size="tiny"
       ref={ref}
-      onMouseDown={handleBeforeContextMenu}
-      onContextMenu={handleContextMenu}
-      onClick={handleClick}
+      onMouseDown={isInteractive ? handleBeforeContextMenu : undefined}
+      onContextMenu={isInteractive ? handleContextMenu : undefined}
+      onClick={isInteractive ? handleClick : undefined}
     >
       {reaction.reaction.type === 'paid' ? (
         <>

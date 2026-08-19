@@ -66,6 +66,7 @@ import { waitForTransitionEnd } from '../../util/cssAnimationEndListeners';
 import { isUserId } from '../../util/entities/ids';
 import { resolveTransitionName } from '../../util/resolveTransitionName';
 import { getShareContext } from '../../api/share/shareContext';
+import { isShareViewActive } from '../../api/share/shareInteractionPolicy';
 import getHasMiddleFooter, { getHasFooterActionBar } from './helpers/getHasMiddleFooter';
 import { measureFooterContentHeight, syncMessageListBottomReserve } from './helpers/messageListReserves';
 
@@ -259,6 +260,7 @@ function MiddleColumn({
   } = getActions();
 
   const { isTablet, isDesktop } = useAppLayout();
+  const isShareView = isShareViewActive();
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -364,7 +366,7 @@ function MiddleColumn({
   );
 
   useEffect(() => {
-    return chatId
+    return chatId && !isShareView
       ? captureEscKeyListener(() => {
         // Let the Right Column (profile, management, etc.) handle Esc first while it is open
         if (isRightColumnShown) return false;
@@ -372,7 +374,7 @@ function MiddleColumn({
         return undefined;
       })
       : undefined;
-  }, [chatId, openChat, isRightColumnShown]);
+  }, [chatId, isShareView, openChat, isRightColumnShown]);
 
   useSyncEffect(() => {
     setDropAreaState(DropAreaState.None);
@@ -684,7 +686,7 @@ function MiddleColumn({
               </div>
             </Transition>
           </div>
-          <MiddleSearch isActive={Boolean(hasActiveMiddleSearch)} />
+          {!isShareView && <MiddleSearch isActive={Boolean(hasActiveMiddleSearch)} />}
         </>
       )}
       {chatId && (

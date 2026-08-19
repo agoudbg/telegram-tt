@@ -34,7 +34,7 @@ import {
   selectSender,
 } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
-import { getShareContext } from '../../../api/share/shareContext';
+import { isShareViewActive } from '../../../api/share/shareInteractionPolicy';
 
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
 import useFlag from '../../../hooks/useFlag';
@@ -120,7 +120,7 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
     setTimeout(markShown, appearanceOrder * MESSAGE_APPEARANCE_DELAY);
   }, [appearanceOrder, noAppearanceAnimation]);
 
-  const isShareView = Boolean(getShareContext());
+  const isShareView = isShareViewActive();
   const shouldPreferOriginSender = forwardInfo
     && (isShareView || isChatWithSelf || isRepliesChat || isAnonymousForwards || !messageSender);
   const avatarPeer = shouldPreferOriginSender ? originSender : messageSender;
@@ -128,6 +128,10 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
   const isAvatarPeerUser = avatarPeer && isApiPeerUser(avatarPeer);
 
   const handleOpenChat = useLastCallback(() => {
+    if (isShareView) {
+      return;
+    }
+
     if (!avatarPeer) {
       return;
     }
@@ -147,6 +151,10 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleSearchMessages = useLastCallback(() => {
+    if (isShareView) {
+      return;
+    }
+
     if (!avatarPeer) {
       return;
     }
@@ -190,7 +198,7 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
 
   const canMention = canPost && avatarPeer && (isAvatarPeerUser || Boolean(getMainUsername(avatarPeer)));
   const canSearch = !isChannel;
-  const shouldRenderContextMenu = Boolean(contextMenuAnchor)
+  const shouldRenderContextMenu = !isShareView && Boolean(contextMenuAnchor)
     && (isAvatarPeerUser || canMention || canSearch || canBanSender);
 
   function renderContextMenu() {
@@ -256,8 +264,8 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
         className={styles.senderAvatar}
         peer={avatarPeer}
         text={hiddenName}
-        onClick={avatarPeer ? handleAvatarClick : undefined}
-        onContextMenu={handleContextMenu}
+        onClick={!isShareView && avatarPeer ? handleAvatarClick : undefined}
+        onContextMenu={!isShareView ? handleContextMenu : undefined}
       />
     );
   }

@@ -14,6 +14,7 @@ import {
 } from '../../global/selectors';
 import { formatMediaDateTime } from '../../util/dates/oldDateFormat';
 import { isUserId } from '../../util/entities/ids';
+import { isShareViewActive } from '../../api/share/shareInteractionPolicy';
 import renderText from '../common/helpers/renderText';
 
 import useAppLayout from '../../hooks/useAppLayout';
@@ -46,8 +47,13 @@ const SenderInfo: FC<OwnProps & StateProps> = ({
   } = getActions();
 
   const { isMobile } = useAppLayout();
+  const isShareView = isShareViewActive();
 
   const handleFocusMessage = useLastCallback(() => {
+    if (isShareView) {
+      return;
+    }
+
     closeMediaViewer();
 
     if (item?.type !== 'message') return;
@@ -112,7 +118,7 @@ const SenderInfo: FC<OwnProps & StateProps> = ({
   const senderTitle = getPeerTitle(lang, owner);
 
   return (
-    <div className="SenderInfo" onClick={handleFocusMessage}>
+    <div className="SenderInfo" onClick={isShareView ? undefined : handleFocusMessage}>
       <Avatar key={owner.id} size="medium" peer={owner} />
       <div className="meta">
         <div className="title" dir="auto">

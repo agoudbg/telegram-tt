@@ -6,7 +6,9 @@ import type { IAlbum, ThreadId } from '../../../../types';
 import { MAIN_THREAD_ID } from '../../../../api/types';
 import { MediaViewerOrigin } from '../../../../types';
 
-import { getMainUsername, getMessagePhoto, getWebPagePhoto, getWebPageVideo } from '../../../../global/helpers';
+import {
+  getMainUsername, getMessageHtmlId, getMessagePhoto, getWebPagePhoto, getWebPageVideo,
+} from '../../../../global/helpers';
 import { getMessageReplyInfo } from '../../../../global/helpers/replies';
 import { tryParseDeepLink } from '../../../../util/deepLinkParser';
 
@@ -33,6 +35,7 @@ export default function useInnerHandlers({
   isRepliesChat,
   isSavedMessages,
   lastPlaybackTimestamp,
+  isShareView,
 }: {
   lang: OldLangFn;
   selectMessage: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, groupedId?: string) => void;
@@ -55,6 +58,7 @@ export default function useInnerHandlers({
   isRepliesChat?: boolean;
   isSavedMessages?: boolean;
   lastPlaybackTimestamp?: number;
+  isShareView?: boolean;
 }) {
   const {
     openChat, openChatWithDraft, showNotification, focusMessage, openMediaViewer, openAudioPlayer,
@@ -71,6 +75,10 @@ export default function useInnerHandlers({
   } = getMessageReplyInfo(message) || {};
 
   const handleSenderClick = useLastCallback(() => {
+    if (isShareView) {
+      return;
+    }
+
     if (!senderPeer) {
       showNotification({ message: lang('HidAccount') });
 
@@ -85,6 +93,10 @@ export default function useInnerHandlers({
   });
 
   const handleViaBotClick = useLastCallback(() => {
+    if (isShareView) {
+      return;
+    }
+
     const username = botSender && getMainUsername(botSender);
     if (!username) {
       return;
@@ -100,6 +112,10 @@ export default function useInnerHandlers({
   });
 
   const handleGuestForClick = useLastCallback(() => {
+    if (isShareView) {
+      return;
+    }
+
     if (!guestFromSender) {
       return;
     }
@@ -116,12 +132,25 @@ export default function useInnerHandlers({
     }
 
     if (isRepliesChat && replyToPeerId && replyToTopId) {
+      if (isShareView) {
+        return;
+      }
+
       openThread({
         isComments: true,
         originChannelId: replyToPeerId,
         originMessageId: replyToTopId,
         focusMessageId: replyToMsgId,
       });
+      return;
+    }
+
+    if (isShareView) {
+      if (replyToPeerId && replyToPeerId !== chatId) {
+        return;
+      }
+
+      document.getElementById(getMessageHtmlId(replyToMsgId))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -146,7 +175,7 @@ export default function useInnerHandlers({
 
   const openMediaViewerWithPhotoOrVideo = useLastCallback((withDynamicLoading: boolean): void => {
     if (paidMedia && !paidMedia.isBought) return;
-    if (withDynamicLoading) {
+    if (withDynamicLoading && !isShareView) {
       searchChatMediaMessages({ chatId, threadId, currentMediaMessageId: messageId });
     }
 
@@ -161,7 +190,7 @@ export default function useInnerHandlers({
       messageId,
       origin: isScheduled ? MediaViewerOrigin.ScheduledInline : MediaViewerOrigin.Inline,
       timestamp: lastPlaybackTimestamp || videoContent?.timestamp || webpageTimestamp,
-      withDynamicLoading,
+      withDynamicLoading: withDynamicLoading && !isShareView,
     });
   });
   const handlePhotoMediaClick = useLastCallback((): void => {
@@ -190,14 +219,16 @@ export default function useInnerHandlers({
   const handleAlbumMediaClick = useLastCallback((albumMessageId: number, albumIndex?: number): void => {
     if (paidMedia && !paidMedia.isBought) return;
 
-    searchChatMediaMessages({ chatId, threadId, currentMediaMessageId: messageId });
+    if (!isShareView) {
+      searchChatMediaMessages({ chatId, threadId, currentMediaMessageId: messageId });
+    }
     openMediaViewer({
       chatId,
       threadId,
       messageId: albumMessageId,
       mediaIndex: albumIndex,
       origin: isScheduled ? MediaViewerOrigin.ScheduledAlbum : MediaViewerOrigin.Album,
-      withDynamicLoading: !paidMedia,
+      withDynamicLoading: !paidMedia && !isShareView,
     });
   });
 
@@ -210,10 +241,14 @@ export default function useInnerHandlers({
   });
 
   const handleGroupForward = useLastCallback(() => {
+    if (isShareView) return;
+
     openForwardMenu({ fromChatId: chatId, groupedId });
   });
 
   const handleForward = useLastCallback(() => {
+    if (isShareView) return;
+
     if (album && album.messages) {
       const messageIds = album.messages.map(({ id }) => id);
       openForwardMenu({ fromChatId: chatId, messageIds });
@@ -223,12 +258,16 @@ export default function useInnerHandlers({
   });
 
   const handleFocus = useLastCallback(() => {
+    if (isShareView) return;
+
     focusMessage({
       chatId, threadId: MAIN_THREAD_ID, messageId,
     });
   });
 
   const handleFocusForwarded = useLastCallback(() => {
+    if (isShareView) return;
+
     const originalChatId = (isSavedMessages && forwardInfo!.savedFromPeerId) || forwardInfo!.fromChatId!;
 
     if (isInDocumentGroup) {
@@ -261,18 +300,24 @@ export default function useInnerHandlers({
   });
 
   const selectWithGroupedId = useLastCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (isShareView) return;
+
     e.stopPropagation();
 
     selectMessage(e, groupedId);
   });
 
   const handleTranslationClick = useLastCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (isShareView) return;
+
     e.stopPropagation();
 
     openChatLanguageModal({ chatId, messageId: !isTranslatingChat ? messageId : undefined });
   });
 
   const handleOpenThread = useLastCallback(() => {
+    if (isShareView) return;
+
     openThread({
       chatId: message.chatId,
       threadId: message.id,
@@ -280,6 +325,8 @@ export default function useInnerHandlers({
   });
 
   const handleTopicChipClick = useLastCallback(() => {
+    if (isShareView) return;
+
     if (!messageTopic) return;
     focusMessage({
       chatId: replyToPeerId || chatId,
@@ -289,6 +336,8 @@ export default function useInnerHandlers({
   });
 
   const handleStoryClick = useLastCallback(() => {
+    if (isShareView) return;
+
     if (!story) return;
     openStoryViewer({
       peerId: story.peerId,

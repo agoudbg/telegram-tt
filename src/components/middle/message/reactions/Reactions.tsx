@@ -16,6 +16,7 @@ import { getReactionKey, isReactionChosen } from '../../../../global/helpers';
 import { selectPeer } from '../../../../global/selectors';
 import buildClassName from '../../../../util/buildClassName';
 import { getMessageKey } from '../../../../util/keys/messageKey';
+import { isShareViewActive } from '../../../../api/share/shareInteractionPolicy';
 
 import useEffectOnce from '../../../../hooks/useEffectOnce';
 import useLastCallback from '../../../../hooks/useLastCallback';
@@ -65,6 +66,7 @@ const Reactions: FC<OwnProps> = ({
     openFrozenAccountModal,
   } = getActions();
   const lang = useOldLang();
+  const isShareView = isShareViewActive();
 
   const { results, areTags, recentReactions } = message.reactions!;
   const withServiceReactions = Boolean(message.areReactionsPossible && message.reactions);
@@ -217,9 +219,9 @@ const Reactions: FC<OwnProps> = ({
             isChosen={isChosen}
             reaction={reaction.reaction as ApiReaction}
             tag={tag}
-            withContextMenu={isCurrentUserPremium}
-            onClick={handleClick}
-            onRemove={handleRemoveReaction}
+            withContextMenu={!isShareView && isCurrentUserPremium}
+            onClick={isShareView ? undefined : handleClick}
+            onRemove={isShareView ? undefined : handleRemoveReaction}
             observeIntersection={observeIntersection}
           />
         ) : (
@@ -234,8 +236,8 @@ const Reactions: FC<OwnProps> = ({
             recentReactors={recentReactors}
             isOutside={isOutside}
             reaction={reaction}
-            onClick={handleClick}
-            onPaidClick={handlePaidClick}
+            onClick={isShareView ? undefined : handleClick}
+            onPaidClick={isShareView ? undefined : handlePaidClick}
             observeIntersection={observeIntersection}
           />
         )
