@@ -81,7 +81,7 @@ test.describe('read-only share view', () => {
       const menu = page.locator('.MessageContextMenu');
       await expect(menu).toBeAttached();
       await expect(menu.locator('.MenuItem')).toHaveCount(1);
-      await expect(menu.locator('.MenuItem').first()).toContainText('lng_context_copy_text');
+      await expect(menu.locator('.MenuItem').first()).toContainText('Copy Text');
       for (const label of ['Reply', 'Pin', 'Forward', 'Select', 'Delete']) {
         await expect(menu.getByText(label, { exact: true })).toHaveCount(0);
       }

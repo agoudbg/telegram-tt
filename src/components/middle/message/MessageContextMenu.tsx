@@ -350,7 +350,7 @@ const MessageContextMenu: FC<OwnProps> = ({
   const getLayout = useLastCallback(() => {
     return {
       extraPaddingX: SCROLLBAR_WIDTH,
-      extraTopPadding: (document.querySelector<HTMLElement>('.MiddleHeader')!).offsetHeight,
+      extraTopPadding: document.querySelector<HTMLElement>('.MiddleHeader')?.offsetHeight ?? 0,
       shouldAvoidNegativePosition: true,
       menuElMinWidth: withReactions && isMobile ? REACTION_SELECTOR_WIDTH_REM * REM : undefined,
       withPortal: true,
@@ -512,7 +512,7 @@ const MessageContextMenu: FC<OwnProps> = ({
             onClick={option.handler}
             withPreventDefaultOnMouseDown
           >
-            {oldLang(option.label)}
+            {lang(option.label)}
           </MenuItem>
         ))}
         {canPin && <MenuItem icon="pin" onClick={onPin}>{oldLang('DialogPin')}</MenuItem>}
