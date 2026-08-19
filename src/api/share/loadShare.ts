@@ -24,6 +24,7 @@ import {
 } from '../gramjs/apiBuilders/messages';
 import { buildShare } from './buildShare';
 import { fetchShare } from './fetchShare';
+import { addSharePresentationMedia, hydrateSharePresentationState } from './presentationAssets';
 import { clearShareContext, getShareContext, setShareContext } from './shareContext';
 
 export async function loadShare(shareId: string, signal?: AbortSignal): Promise<ShareLoadStatus> {
@@ -48,14 +49,14 @@ export async function loadShare(shareId: string, signal?: AbortSignal): Promise<
 
   setShareContext({
     shareId,
-    media: result.data.media,
+    media: addSharePresentationMedia(result.data.media),
     avatars: built.avatars,
     nestedForwardMessageIds: built.nestedForwardMessageIds,
     messageBuilderCurrentUserId: previousMessageBuilderCurrentUserId,
   });
 
   const tabId = getCurrentTabId();
-  let global = getGlobal();
+  let global = hydrateSharePresentationState(getGlobal());
   global = updateUsers(global, buildCollectionByKey([built.user, ...built.users], 'id'));
   global = updateChats(global, buildCollectionByKey([built.chat, ...built.chats], 'id'));
   global = addChatMessagesById(global, built.chatId, buildCollectionByKey(built.messages, 'id'));
