@@ -101,6 +101,12 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
     const apiMessage = buildApiMessage(tlMessage);
     if (apiMessage) {
       if (apiMessage.forwardInfo) apiMessage.date = apiMessage.forwardInfo.date;
+      const previousMessage = messages[messages.length - 1];
+      // Flattened nested forwards can expose an older source timestamp. Clamp
+      // only backward display dates so separators preserve the batch order.
+      if (previousMessage && apiMessage.date < previousMessage.date) {
+        apiMessage.date = previousMessage.date;
+      }
       wireShareMedia(apiMessage, entry.seq, data);
       if (entry.nestedForward) {
         degradeForwardOrigin(apiMessage, peerNames);

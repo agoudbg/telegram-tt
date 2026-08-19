@@ -150,9 +150,10 @@ const MessageMeta = ({
     }
 
     const time = formatTime(oldLang, message.date * 1000);
+    const fullDate = isShareView ? message.date : (message.forwardInfo?.date || message.date);
     const baseDate = !withFullDate
       ? time
-      : formatPastTimeShort(oldLang, (message.forwardInfo?.date || message.date) * 1000, true);
+      : formatPastTimeShort(oldLang, fullDate * 1000, true);
 
     if (repeatPeriodText) {
       return lang('FormatDateAtTime', { date: repeatPeriodText, time: baseDate });
@@ -160,8 +161,8 @@ const MessageMeta = ({
 
     return baseDate;
   }, [
-    lang, message.date, message.editDate, message.forwardInfo?.date, message.isVideoProcessingPending, oldLang,
-    repeatPeriodText, shouldShowPrimaryEditedDate, withFullDate,
+    isShareView, lang, message.date, message.editDate, message.forwardInfo?.date, message.isVideoProcessingPending,
+    oldLang, repeatPeriodText, shouldShowPrimaryEditedDate, withFullDate,
   ]);
 
   const fullClassName = buildClassName(
