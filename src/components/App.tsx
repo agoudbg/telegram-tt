@@ -64,6 +64,7 @@ enum AppScreens {
 const TRANSITION_RENDER_COUNT = Object.keys(AppScreens).length / 2;
 const ACTIVE_PAGE_TITLE = IS_TAURI ? PAGE_TITLE_TAURI : PAGE_TITLE;
 const INACTIVE_PAGE_TITLE = `${ACTIVE_PAGE_TITLE} ${INACTIVE_MARKER}`;
+const SHARE_PAGE_TITLE = 'Shared Message';
 
 const App = ({
   authState,
@@ -196,12 +197,14 @@ const App = ({
   }, []);
 
   useEffect(() => {
-    if (inactiveReason) {
+    if (shareId) {
+      document.title = SHARE_PAGE_TITLE;
+    } else if (inactiveReason) {
       document.title = INACTIVE_PAGE_TITLE;
     } else {
       document.title = ACTIVE_PAGE_TITLE;
     }
-  }, [inactiveReason]);
+  }, [inactiveReason, shareId]);
 
   const prevActiveKey = usePrevious(activeKey);
 
