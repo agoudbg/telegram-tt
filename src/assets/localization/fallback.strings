@@ -3142,6 +3142,8 @@
 "ShareRevoked" = "This share has been deleted.";
 "ShareError" = "Failed to load the shared messages.";
 "ShareMediaUnavailable" = "This media is too large to be previewed here.";
+"ShareContentWarning" = "Messages may have been excerpted, mixed, or tampered with and are for reference only.";
+"ShareContentWarningLearnMore" = "Learn More";
 "ShareViewInTelegram" = "View in Telegram";
 "ShareUnknownOrigin" = "Unknown origin";
 "ForwardedFrom" = "Forwarded from";

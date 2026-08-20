@@ -15,6 +15,7 @@ interface TelegramWebApp {
   };
   ready?: () => void;
   expand?: () => void;
+  openLink?: (url: string) => void;
 }
 
 declare global {

@@ -7,6 +7,8 @@ import type { IAlbum, IDocumentGroup, MessageListType, ThreadId } from '../../ty
 import type { Signal } from '../../util/signals';
 import type { MessageDateGroup } from './helpers/groupMessages';
 import type { OnIntersectPinnedMessage } from './hooks/usePinnedMessage';
+import { getMiniApp } from '../../api/share/miniApp';
+import { isShareViewActive } from '../../api/share/shareInteractionPolicy';
 import { MAIN_THREAD_ID } from '../../api/types';
 
 import { SCHEDULED_WHEN_ONLINE } from '../../config';
@@ -94,6 +96,7 @@ interface OwnProps {
 }
 
 const UNREAD_DIVIDER_CLASS = 'unread-divider';
+const SHARE_CONTENT_HELP_URL = 'https://github.com/agoudbg/telegram-batch-forwarding-bot/blob/main/docs/SHARED_MESSAGE_AUTHENTICITY.md';
 
 function senderGroupContainsOriginalId(
   senderGroup: (ApiMessage | IAlbum | IDocumentGroup)[],
@@ -209,6 +212,14 @@ const MessageListContent = ({
 
   const oldLang = useOldLang();
   const lang = useLang();
+  const isShareView = isShareViewActive();
+  const handleShareContentHelpClick = useLastCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
+    const webApp = getMiniApp();
+    if (!webApp?.openLink) return;
+
+    event.preventDefault();
+    webApp.openLink(SHARE_CONTENT_HELP_URL);
+  });
 
   const unreadDivider = (
     <div className={buildClassName(UNREAD_DIVIDER_CLASS, 'local-action-message')} key="unread-messages">
@@ -638,6 +649,22 @@ const MessageListContent = ({
   return (
     <div ref={messagesContainerRef} className="messages-container" teactFastList>
       {withHistoryTriggers && <div ref={backwardsTriggerRef} key="backwards-trigger" className="backwards-trigger" />}
+      {isShareView && (
+        <div className="local-action-message share-content-warning" key="share-content-warning" role="note">
+          <span>
+            {lang('ShareContentWarning')}{' '}
+            <a
+              className="share-content-warning-link"
+              href={SHARE_CONTENT_HELP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleShareContentHelpClick}
+            >
+              {lang('ShareContentWarningLearnMore')}
+            </a>
+          </span>
+        </div>
+      )}
       {shouldRenderAccountInfo
         && <MessageListAccountInfo key={`account_info_${chatId}`} chatId={chatId} hasMessages />}
       {dateGroups}

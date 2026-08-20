@@ -36,6 +36,38 @@ async function expectShareShellStable(page: Page, url: string) {
 }
 
 test.describe('read-only share view', () => {
+  test('shows the content warning before the shared messages', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.Telegram = {
+        WebApp: {
+          openLink: (url: string) => {
+            document.documentElement.dataset.openedUrl = url;
+          },
+        },
+      };
+    });
+    await page.goto('/s/demo-type-text', { waitUntil: 'domcontentloaded' });
+    await waitForShareReady(page);
+
+    const warning = page.getByRole('note');
+    await expect(warning).toContainText(
+      'Messages may have been excerpted, mixed, or tampered with and are for reference only.',
+    );
+    await expect(page.locator('.messages-container > :is(.share-content-warning, .message-date-group)').first())
+      .toHaveClass(/share-content-warning/);
+
+    const learnMore = warning.getByRole('link', { name: 'Learn More' });
+    await expect(learnMore).toHaveAttribute(
+      'href',
+      'https://github.com/agoudbg/telegram-batch-forwarding-bot/blob/main/docs/SHARED_MESSAGE_AUTHENTICITY.md',
+    );
+    await learnMore.click();
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-opened-url',
+      'https://github.com/agoudbg/telegram-batch-forwarding-bot/blob/main/docs/SHARED_MESSAGE_AUTHENTICITY.md',
+    );
+  });
+
   test('renders the message-type coverage matrix', async ({ page }, testInfo) => {
     const unexpectedErrors: string[] = [];
     page.on('pageerror', (error) => {
