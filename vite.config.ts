@@ -177,6 +177,7 @@ export default defineConfig(({ mode }): UserConfig => {
     TG_APP_MOCKED_CLIENT: appMockedClient,
     TG_APP_NAME: env.APP_NAME || '',
     TG_APP_TITLE: appTitle,
+    TG_ROBOTS: appMockedClient === '1' ? 'noindex, nofollow' : 'index, follow',
     TG_PUBLIC_URL: baseUrl,
     TG_CSP: csp,
     TG_APPLE_ICON: appleIcon,
