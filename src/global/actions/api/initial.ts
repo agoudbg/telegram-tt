@@ -2,6 +2,7 @@ import type { ActionReturnType } from '../../types';
 import { ManagementProgress } from '../../../types';
 
 import {
+  IS_MOCKED_CLIENT,
   LANG_CACHE_NAME,
   LOCK_SCREEN_ANIMATION_DURATION_MS,
   MEDIA_CACHE_NAME,
@@ -33,6 +34,7 @@ import { forceWebsync } from '../../../util/websync';
 import {
   callApi, callApiLocal, initApi, setShouldEnableDebugLog,
 } from '../../../api/gramjs';
+import { parseShareId } from '../../../api/share/shareRoute';
 import {
   removeGlobalFromCache, removeSharedStateFromCache, serializeGlobal, serializeShared,
 } from '../../cache';
@@ -49,6 +51,8 @@ import { destroySharedStatePort } from '../../shared/sharedStateConnector';
 let resetStoragePromise: Promise<boolean> | undefined;
 
 addActionHandler('initApi', (global, actions): ActionReturnType => {
+  if (IS_MOCKED_CLIENT && parseShareId()) return;
+
   const initialLocationHash = parseInitialLocationHash();
   const {
     shouldAllowHttpTransport,

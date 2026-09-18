@@ -82,7 +82,13 @@ class TelegramClient {
       this.callbacks.forEach(({ eventBuilder, callback }) => (callback(
         eventBuilder.build(new UpdateConnectionState(UpdateConnectionState.connected)),
       )));
-    }).catch(() => this.loadScenario());
+    }).catch((err: unknown) => {
+      if (scenario === 'default') {
+        throw new Error('Failed to load default mock scenario', { cause: err });
+      }
+
+      return this.loadScenario();
+    });
   }
 
   fireUpdate(update: Api.TypeUpdate) {

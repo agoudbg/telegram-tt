@@ -12,6 +12,7 @@ import type { LangCode } from '../../../types';
 import type { RequiredGlobalActions } from '../../index';
 import type { ActionReturnType, GlobalState } from '../../types';
 
+import { IS_MOCKED_CLIENT } from '../../../config';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { getShippingError, shouldClosePaymentModal } from '../../../util/getReadableErrorText';
 import { getAccountsInfo, getAccountSlotUrl } from '../../../util/multiaccount';
@@ -275,7 +276,7 @@ function onUpdateConnectionState<T extends GlobalState>(
     }
   }
 
-  if (connectionState === 'connectionStateBroken') {
+  if (connectionState === 'connectionStateBroken' && !IS_MOCKED_CLIENT) {
     actions.signOut({ forceInitApi: true });
   }
 }
