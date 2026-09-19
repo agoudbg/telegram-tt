@@ -57,6 +57,16 @@ export async function loadShare(shareId: string, signal?: AbortSignal): Promise<
 
   const tabId = getCurrentTabId();
   let global = hydrateSharePresentationState(getGlobal());
+  global = {
+    ...global,
+    customEmojis: {
+      ...global.customEmojis,
+      byId: {
+        ...global.customEmojis.byId,
+        ...buildCollectionByKey(built.customEmojis, 'id'),
+      },
+    },
+  };
   global = updateUsers(global, buildCollectionByKey([built.user, ...built.users], 'id'));
   global = updateChats(global, buildCollectionByKey([built.chat, ...built.chats], 'id'));
   global = addChatMessagesById(global, built.chatId, buildCollectionByKey(built.messages, 'id'));

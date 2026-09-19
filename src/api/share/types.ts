@@ -39,6 +39,8 @@ export interface ShareResponse {
     avatarUrl: string | undefined;
   }>;
   media: Record<string, ShareMediaEntry>;
+  /** Sanitized custom emoji Documents used to seed the sticker cache */
+  customEmojis: TLJsonValue[];
   /** Bot username (no @) for the unhosted-media deep link; undefined when the
    *  server is not configured with BOT_USERNAME */
   botUsername: string | undefined;

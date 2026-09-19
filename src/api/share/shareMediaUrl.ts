@@ -5,7 +5,7 @@
 
 import { getShareContext } from './shareContext';
 
-const SHARE_MEDIA_HASH_PATTERN = /^(?:photo|document)(\d+)(?:\?.*)?$/;
+const SHARE_MEDIA_HASH_PATTERN = /^(photo|document)_?(\d+)(?:\?.*)?$/;
 const SHARE_AVATAR_HASH_PATTERN = /^avatar(-?\d+)(?:\?.*)?$/;
 const THUMB_SIZE_PATTERN = /(^|&)size=[ma](&|$)/;
 
@@ -19,7 +19,7 @@ export function resolveShareMediaUrl(hash: string): string | undefined {
   const mediaMatch = SHARE_MEDIA_HASH_PATTERN.exec(hash);
   if (!mediaMatch) return undefined;
 
-  const entry = context.media[mediaMatch[1]];
+  const entry = context.media[`${mediaMatch[1]}_${mediaMatch[2]}`] || context.media[mediaMatch[2]];
   if (!entry?.hosted || !entry.url) return undefined;
 
   const query = hash.split('?')[1] || '';

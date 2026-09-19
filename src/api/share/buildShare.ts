@@ -12,7 +12,7 @@
 import { Api as GramJs } from '../../lib/gramjs';
 
 import type {
-  ApiChat, ApiDimensions, ApiMessage, ApiMessagePoll, ApiThumbnail, ApiUser,
+  ApiChat, ApiDimensions, ApiMessage, ApiMessagePoll, ApiSticker, ApiThumbnail, ApiUser,
 } from '../types';
 import type { ShareMediaEntry, ShareResponse } from './types';
 
@@ -21,6 +21,7 @@ import { getTranslationFn } from '../../util/localization';
 import { formatFileSize } from '../../util/textFormat';
 import { buildMessagePollFromMedia } from '../gramjs/apiBuilders/messageContent';
 import { buildApiMessage, setMessageBuilderCurrentUserId } from '../gramjs/apiBuilders/messages';
+import { processStickerResult } from '../gramjs/apiBuilders/symbols';
 import { hydrateTL } from './hydrate';
 import { getTLRegistry } from './tlRegistry';
 
@@ -44,6 +45,7 @@ export interface BuiltShare {
    *  stores `content.pollId`; the renderer reads the rest from state) */
   polls: ApiMessagePoll[];
   avatars: Record<string, string>;
+  customEmojis: ApiSticker[];
   nestedForwardMessageIds: Set<number>;
 }
 
@@ -58,6 +60,9 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   const peerNames: Record<string, string> = {};
   const users: ApiUser[] = [];
   const chats: ApiChat[] = [];
+  const customEmojis = processStickerResult(
+    (data.customEmojis || []).map((document) => hydrateTL(document, registry) as GramJs.TypeDocument),
+  );
   data.peers.forEach((peer) => {
     if (peer.kind === 'user') {
       users.push({
@@ -141,7 +146,16 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   };
 
   return {
-    chatId, chat, user, users, chats, messages, polls, avatars, nestedForwardMessageIds,
+    chatId,
+    chat,
+    user,
+    users,
+    chats,
+    messages,
+    polls,
+    avatars,
+    customEmojis,
+    nestedForwardMessageIds,
   };
 }
 
@@ -186,7 +200,7 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
   if (applyUnhostedPlaceholder(message, seq, data)) return;
 
   if (photo) {
-    const entry = media[photo.id];
+    const entry = getShareMediaEntry(media, 'photo', photo.id);
     if (entry?.hosted && entry.url) {
       photo.blobUrl = entry.url;
       if (!photo.thumbnail) {
@@ -197,7 +211,7 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
   }
 
   if (video) {
-    const entry = media[video.id];
+    const entry = getShareMediaEntry(media, 'document', video.id);
     if (entry?.hosted && entry.url) {
       video.blobUrl = entry.url;
       if (!video.thumbnail) {
@@ -210,7 +224,7 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
   }
 
   if (document) {
-    const entry = document.id ? media[document.id] : undefined;
+    const entry = document.id ? getShareMediaEntry(media, 'document', document.id) : undefined;
     if (entry?.hosted && entry.thumbUrl) {
       if (!document.thumbnail) document.thumbnail = buildShareThumbnail(entry, document.mediaSize);
       if (!document.previewBlobUrl) document.previewBlobUrl = entry.thumbUrl;
@@ -218,7 +232,7 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
   }
 
   if (sticker) {
-    const entry = media[sticker.id];
+    const entry = getShareMediaEntry(media, 'document', sticker.id);
     if (entry?.hosted && entry.thumbUrl && !sticker.thumbnail) {
       const stickerDimensions = sticker.width !== undefined && sticker.height !== undefined
         ? { width: sticker.width, height: sticker.height }
@@ -236,12 +250,15 @@ function applyUnhostedPlaceholder(message: ApiMessage, seq: number, data: ShareR
   const { content } = message;
   const mediaKey = MEDIA_CONTENT_KEYS.find((key) => {
     const media = content[key];
-    const entry = media?.id ? data.media[media.id] : undefined;
+    const kind = key === 'photo' ? 'photo' : 'document';
+    const entry = media?.id ? getShareMediaEntry(data.media, kind, media.id) : undefined;
     return entry && !entry.hosted;
   });
   if (!mediaKey) return false;
 
-  const entry = data.media[content[mediaKey]!.id!];
+  const kind = mediaKey === 'photo' ? 'photo' : 'document';
+  const entry = getShareMediaEntry(data.media, kind, content[mediaKey]!.id!);
+  if (!entry) return false;
   delete content[mediaKey];
 
   const lang = getTranslationFn();
@@ -261,6 +278,14 @@ function applyUnhostedPlaceholder(message: ApiMessage, seq: number, data: ShareR
     }]];
   }
   return true;
+}
+
+function getShareMediaEntry(
+  media: Record<string, ShareMediaEntry>,
+  kind: 'photo' | 'document',
+  id: string,
+): ShareMediaEntry | undefined {
+  return media[id] || media[`${kind}_${id}`];
 }
 
 function buildShareThumbnail(entry: ShareMediaEntry, dimensions?: ApiDimensions): ApiThumbnail | undefined {
