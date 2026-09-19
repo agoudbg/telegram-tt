@@ -174,6 +174,7 @@ export interface AccountSettings {
   canChangeSensitive?: boolean;
   shouldArchiveAndMuteNewNonContact?: boolean;
   shouldNewNonContactPeersRequirePremium?: boolean;
+  defaultHistoryTtl?: number;
   nonContactPeersPaidStars?: number;
   shouldDisplayGiftsButton?: boolean;
   disallowedGifts?: ApiDisallowedGiftsSettings;
@@ -211,6 +212,7 @@ export enum SettingsScreens {
   GeneralChatBackground,
   GeneralChatBackgroundColor,
   Privacy,
+  AutoDeleteMessages,
   PrivacyPhoneNumber,
   PrivacyAddByPhone,
   PrivacyLastSeen,
@@ -329,8 +331,6 @@ export enum RightColumnContent {
   BoostStatistics,
   MessageStatistics,
   StoryStatistics,
-  StickerSearch,
-  GifSearch,
   PollResults,
   AddingMembers,
   CreateTopic,
@@ -353,6 +353,7 @@ export type MediaViewerPageMedia = {
 
 export enum MediaViewerOrigin {
   Inline,
+  Ephemeral,
   ScheduledInline,
   SharedMedia,
   ProfileAvatar,
@@ -439,6 +440,7 @@ export type ProfileTabType =
   | 'audio'
   | 'voice'
   | 'gif'
+  | 'playlist'
   | 'stories'
   | 'storiesArchive'
   | 'similarChannels'

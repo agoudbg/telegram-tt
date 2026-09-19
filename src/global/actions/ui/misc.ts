@@ -18,7 +18,9 @@ import { refreshFromCache } from '../../../util/localization';
 import * as langProvider from '../../../util/oldLangProvider';
 import updateIcon from '../../../util/updateIcon';
 import { setPageTitle, setPageTitleInstant } from '../../../util/updatePageTitle';
-import { canEditMediaInEditor, getAllowedAttachmentOptions, getChatTitle } from '../../helpers';
+import {
+  canEditMediaInEditor, getAllowedAttachmentOptions, getChatTitle, runForFocusedTabs,
+} from '../../helpers';
 import { addTabStateResetterAction } from '../../helpers/meta';
 import {
   addActionHandler, getActions, getGlobal, setGlobal,
@@ -916,9 +918,7 @@ addActionHandler('processPremiumFloodWait', (global, actions, payload): ActionRe
   }
   if (lastNotifiedAt && Date.now() < lastNotifiedAt + bandwidthPremiumNotifyPeriod * 1000) return undefined;
 
-  const unblurredTabIds = Object.values(global.byTabId).filter((l) => !l.isBlurred).map((l) => l.id);
-
-  unblurredTabIds.forEach((tabId) => {
+  runForFocusedTabs(global, (tabId) => {
     actions.showNotification({
       title: langProvider.oldTranslate(isUpload ? 'UploadSpeedLimited' : 'DownloadSpeedLimited'),
       message: langProvider.oldTranslate(
@@ -980,6 +980,16 @@ addActionHandler('openLeaveGroupModal', (global, actions, payload): ActionReturn
 });
 
 addTabStateResetterAction('closeLeaveGroupModal', 'leaveGroupModal');
+
+addActionHandler('openAutoDeleteTimerModal', (global, actions, payload): ActionReturnType => {
+  const { chatId, tabId = getCurrentTabId() } = payload;
+
+  return updateTabState(global, {
+    autoDeleteTimerModal: { chatId },
+  }, tabId);
+});
+
+addTabStateResetterAction('closeAutoDeleteTimerModal', 'autoDeleteTimerModal');
 
 addActionHandler('openTwoFaCheckModal', (global, actions, payload): ActionReturnType => {
   const { tabId = getCurrentTabId() } = payload || {};

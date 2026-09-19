@@ -96,6 +96,7 @@ export const MESSAGE_SEARCH_SLICE = 42;
 export const GLOBAL_SEARCH_SLICE = 20;
 export const GLOBAL_TOPIC_SEARCH_SLICE = 5;
 export const MEMBERS_SLICE = 30;
+export const SAVED_MUSIC_SLICE = 30;
 export const MEMBERS_LOAD_SLICE = 200;
 export const PROFILE_SENSITIVE_AREA = 500;
 export const TOPIC_LIST_SENSITIVE_AREA = 600;
@@ -252,6 +253,7 @@ export const STICKER_SIZE_INLINE_BOT_RESULT = 100;
 export const STICKER_SIZE_JOIN_REQUESTS = 140;
 export const STICKER_SIZE_INVITES = 140;
 export const RECENT_STICKERS_LIMIT = 20;
+export const GLOBAL_STICKER_SEARCH_LIMIT = 100;
 export const RECENT_STATUS_LIMIT = 20;
 export const EMOJI_STATUS_LOOP_LIMIT = 2;
 export const EMOJI_SIZES = 7;
@@ -412,6 +414,7 @@ export const GROUP_CALL_VOLUME_MULTIPLIER = 100;
 export const GROUP_CALL_DEFAULT_VOLUME = 100 * GROUP_CALL_VOLUME_MULTIPLIER;
 
 export const ONE_TIME_MEDIA_TTL_SECONDS = 2147483647;
+export const EPHEMERAL_MESSAGE_TTL_SECONDS = 48 * 60 * 60;
 
 // Premium
 export const PREMIUM_FEATURE_SECTIONS = [
@@ -434,6 +437,7 @@ export const PREMIUM_FEATURE_SECTIONS = [
   'message_privacy',
   'effects',
   'ai_compose',
+  'rich_formatting',
   'todo',
   'pm_noforwards',
 ] as const;

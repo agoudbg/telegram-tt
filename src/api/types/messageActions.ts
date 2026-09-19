@@ -58,12 +58,23 @@ export interface ApiMessageActionChannelMigrateFrom extends ActionMediaType {
   chatId: string;
 }
 
+export interface ApiMessageActionChangeCommunity extends ActionMediaType {
+  type: 'changeCommunity';
+  communityId?: string;
+}
+
 export interface ApiMessageActionPinMessage extends ActionMediaType {
   type: 'pinMessage';
 }
 
 export interface ApiMessageActionHistoryClear extends ActionMediaType {
   type: 'historyClear';
+}
+
+export interface ApiMessageActionSetMessagesTtl extends ActionMediaType {
+  type: 'setMessagesTtl';
+  period: number;
+  autoSettingFromId?: string;
 }
 
 export interface ApiMessageActionGameScore extends ActionMediaType {
@@ -393,7 +404,8 @@ export type ApiMessageAction = ApiMessageActionUnsupported | ApiMessageActionCha
   | ApiMessageActionChatEditPhoto | ApiMessageActionChatDeletePhoto | ApiMessageActionChatAddUser
   | ApiMessageActionChatDeleteUser | ApiMessageActionChatJoinedByLink | ApiMessageActionChannelCreate
   | ApiMessageActionChatMigrateTo | ApiMessageActionChannelMigrateFrom | ApiMessageActionPinMessage
-  | ApiMessageActionHistoryClear | ApiMessageActionGameScore | ApiMessageActionPaymentSent | ApiMessageActionPhoneCall
+  | ApiMessageActionHistoryClear | ApiMessageActionSetMessagesTtl
+  | ApiMessageActionGameScore | ApiMessageActionPaymentSent | ApiMessageActionPhoneCall
   | ApiMessageActionScreenshotTaken | ApiMessageActionCustomAction | ApiMessageActionBotAllowed
   | ApiMessageActionBoostApply | ApiMessageActionContactSignUp | ApiMessageActionExpiredContent
   | ApiMessageActionGroupCall | ApiMessageActionInviteToGroupCall | ApiMessageActionGroupCallScheduled
@@ -408,4 +420,5 @@ export type ApiMessageAction = ApiMessageActionUnsupported | ApiMessageActionCha
   | ApiMessageActionTodoAppendTasks | ApiMessageActionPollAppendAnswer | ApiMessageActionPollDeleteAnswer
   | ApiMessageActionStarGiftPurchaseOffer
   | ApiMessageActionStarGiftPurchaseOfferDeclined | ApiMessageActionNewCreatorPending
-  | ApiMessageActionChangeCreator | ApiMessageActionNoForwardsToggle | ApiMessageActionNoForwardsRequest;
+  | ApiMessageActionChangeCreator | ApiMessageActionNoForwardsToggle | ApiMessageActionNoForwardsRequest
+  | ApiMessageActionChangeCommunity;

@@ -71,7 +71,7 @@ addActionHandler('sync', (global, actions): ActionReturnType => {
   }, RELEASE_STATUS_TIMEOUT);
 
   const {
-    loadAllChats, preloadTopChatMessages,
+    loadAllChats, preloadTopChatMessages, loadCommunities,
   } = actions;
 
   initFolderManager();
@@ -80,6 +80,8 @@ addActionHandler('sync', (global, actions): ActionReturnType => {
     listType: 'active',
     whenFirstBatchDone: async () => {
       await loadAndReplaceMessages(global, actions);
+
+      loadCommunities();
 
       global = getGlobal();
       global = {
@@ -326,6 +328,7 @@ function preserveCurrentThreads<T extends GlobalState>(global: T) {
         ...acc[chatId]?.byId,
         ...pinnedMessagesById,
       },
+      ephemeralById: global.messages.byChatId[chatId]?.ephemeralById || {},
       summaryById: {},
       threadsById: {
         ...acc[chatId]?.threadsById,
@@ -358,6 +361,7 @@ function preserveThreads<T extends GlobalState>(global: T) {
 
       preservedByChatId[chatId] = {
         byId: { ...preservedByChatId[chatId]?.byId },
+        ephemeralById: messages.ephemeralById,
         summaryById: {},
         threadsById: {
           ...preservedByChatId[chatId]?.threadsById,

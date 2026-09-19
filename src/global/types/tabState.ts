@@ -167,18 +167,6 @@ export type TabState = {
   shouldInit: boolean;
   shouldSkipHistoryAnimations?: boolean;
 
-  gifSearch: {
-    query?: string;
-    offset?: string;
-    results?: ApiVideo[];
-  };
-
-  stickerSearch: {
-    query?: string;
-    hash?: string;
-    resultIds?: string[];
-  };
-
   shouldCloseRightColumn?: boolean;
   chatInfo: {
     isOpen: boolean;
@@ -214,6 +202,7 @@ export type TabState = {
   activeChatFolder: number;
   tabThreads: Record<string, Record<ThreadId, TabThread>>;
   forumPanelChatId?: string;
+  communityPanelId?: string;
 
   focusedMessage?: {
     chatId?: string;
@@ -1109,6 +1098,10 @@ export type TabState = {
   leaveGroupModal?: {
     chatId: string;
     nextOwnerId?: string;
+  };
+
+  autoDeleteTimerModal?: {
+    chatId: string;
   };
 
   isTwoFaCheckModalOpen?: true;

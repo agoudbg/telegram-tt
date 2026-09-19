@@ -94,8 +94,6 @@ export { default as EmojiTooltip } from '../components/common/tooltips/EmojiTool
 export { default as InlineBotTooltip } from '../components/common/tooltips/InlineBotTooltip';
 export { default as SendAsMenu } from '../components/middle/composer/SendAsMenu';
 
-export { default as StickerSearch } from '../components/right/StickerSearch';
-export { default as GifSearch } from '../components/right/GifSearch';
 export { default as Statistics } from '../components/right/statistics/Statistics';
 export { default as MessageStatistics } from '../components/right/statistics/MessageStatistics';
 export { default as StoryStatistics } from '../components/right/statistics/StoryStatistics';
@@ -113,6 +111,7 @@ export { default as BrowserCloseConfirmationModal } from '../components/main/Bro
 export { default as FrozenAccountModal } from '../components/modals/frozenAccount/FrozenAccountModal';
 export { default as ProfileRatingModal } from '../components/modals/profileRating/ProfileRatingModal';
 export { default as DisableSharingAboutModal } from '../components/modals/disableSharing/DisableSharingAboutModal';
+export { default as AutoDeleteTimerModal } from '../components/modals/autoDeleteTimer/AutoDeleteTimerModal';
 export { default as EditRankModal } from '../components/modals/rank/EditRankModal';
 export { default as RankModal } from '../components/modals/rank/RankModal';
 export { default as QuickPreviewModal } from '../components/modals/quickPreview/QuickPreviewModal';

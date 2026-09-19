@@ -12,6 +12,7 @@ import type {
   ApiConfig,
   ApiCountry,
   ApiCountryCode,
+  ApiEmojiGroup,
   ApiEmojiStatusType,
   ApiGroupCall,
   ApiMessage,
@@ -53,6 +54,7 @@ import type {
   ApiUser,
   ApiUserCommonChats,
   ApiUserFullInfo,
+  ApiUserSavedMusic,
   ApiUserStatus,
   ApiVideo,
   ApiWallpaper,
@@ -194,6 +196,9 @@ export type GlobalState = {
   users: {
     byId: Record<string, ApiUser>;
     statusesById: Record<string, ApiUserStatus>;
+    savedMusicById?: Record<string, true>;
+    isSavedMusicLoading?: boolean;
+    savedMusicByPeerId: Record<string, ApiUserSavedMusic>;
     // Obtained from GetFullUser / UserFullInfo
     fullInfoById: Record<string, ApiUserFullInfo>;
     previewMediaByBotId: Record<string, ApiBotPreviewMedia[]>;
@@ -256,6 +261,7 @@ export type GlobalState = {
   messages: {
     byChatId: Record<string, {
       byId: Record<number, ApiMessage>;
+      ephemeralById: Record<number, ApiMessage>;
       summaryById: Record<number, TextSummary>;
       threadsById: Record<ThreadId, Thread>;
     }>;
@@ -369,6 +375,8 @@ export type GlobalState = {
     featured: {
       hash?: string;
       setIds?: string[];
+      isPremium?: boolean;
+      hiddenSetId?: string;
     };
     forEmoji: {
       emoji?: string;
@@ -410,6 +418,13 @@ export type GlobalState = {
   premiumGifts?: ApiStickerSet;
   tonGifts?: ApiStickerSet;
   emojiKeywords: Record<string, EmojiKeywords | undefined>;
+
+  emojiGroups: {
+    hash?: number;
+    groups?: ApiEmojiGroup[];
+    stickerHash?: number;
+    stickerGroups?: ApiEmojiGroup[];
+  };
 
   collectibleEmojiStatuses?: {
     statuses: ApiEmojiStatusType[];

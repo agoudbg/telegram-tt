@@ -2,6 +2,7 @@ import { Api as GramJs } from '../../../lib/gramjs';
 import { generateRandomBigInt, generateRandomBytes, readBigIntFromBuffer } from '../../../lib/gramjs/Helpers';
 
 import type {
+  ApiAudio,
   ApiBirthday,
   ApiBotApp,
   ApiChatAdminRights,
@@ -48,6 +49,7 @@ import {
 import { CHANNEL_ID_BASE, DEFAULT_STATUS_ICON_ID, STARS_CURRENCY_CODE } from '../../../config';
 import { writeUint32LE } from '../../../util/encoding/buffer';
 import { pick } from '../../../util/iteratees';
+import { getMtpEphemeralMessageId } from '../../../util/keys/messageKey';
 import { deserializeBytes } from '../helpers/misc';
 import localDb from '../localDb';
 
@@ -168,6 +170,15 @@ export function buildInputPeerFromLocalDb(chatOrUserId: string): GramJs.TypeInpu
   return buildInputPeer(chatOrUserId, String(accessHash));
 }
 
+export function buildInputUserFromLocalDb(userId: string): GramJs.TypeInputUser | undefined {
+  const accessHash = localDb.users[userId]?.accessHash;
+  if (!accessHash) {
+    return undefined;
+  }
+
+  return buildInputUser(userId, String(accessHash));
+}
+
 export function buildInputChannelFromLocalDb(channelId: string): GramJs.TypeInputChannel | undefined {
   const channel = localDb.chats[channelId];
 
@@ -191,7 +202,7 @@ export function buildInputStickerSetShortName(shortName: string) {
   });
 }
 
-export function buildInputDocument(media: ApiSticker | ApiVideo | ApiDocument) {
+export function buildInputDocument(media: ApiAudio | ApiSticker | ApiVideo | ApiDocument) {
   if (!media.id) {
     return undefined;
   }
@@ -1036,6 +1047,12 @@ export function buildInputReplyTo(replyInfo: ApiInputReplyInfo) {
     return new GramJs.InputReplyToStory({
       peer: buildInputPeerFromLocalDb(replyInfo.peerId)!,
       storyId: replyInfo.storyId,
+    });
+  }
+
+  if (replyInfo.type === 'ephemeral') {
+    return new GramJs.InputReplyToEphemeralMessage({
+      id: getMtpEphemeralMessageId(replyInfo.replyToMsgId),
     });
   }
 

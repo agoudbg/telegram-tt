@@ -259,6 +259,25 @@ export type ApiUpdateNewMessage = {
   webPages?: ApiWebPage[];
 };
 
+export type ApiUpdateNewEphemeralMessage = {
+  '@type': 'newEphemeralMessage';
+  message: ApiMessage;
+  shouldForceReply?: boolean;
+  webPages?: ApiWebPage[];
+};
+
+export type ApiUpdateEphemeralMessage = {
+  '@type': 'updateEphemeralMessage';
+  message: ApiMessage;
+  webPages?: ApiWebPage[];
+};
+
+export type ApiUpdateDeleteEphemeralMessages = {
+  '@type': 'deleteEphemeralMessages';
+  chatId: string;
+  messageIds: number[];
+};
+
 export type ApiUpdateMessage = {
   '@type': 'updateMessage';
   chatId: string;
@@ -486,6 +505,12 @@ export type ApiUpdatePeerSettings = {
   '@type': 'updatePeerSettings';
   id: string;
   settings: ApiPeerSettings;
+};
+
+export type ApiUpdatePeerHistoryTtl = {
+  '@type': 'updatePeerHistoryTtl';
+  id: string;
+  ttlPeriod?: number;
 };
 
 export type ApiUpdateUser = {
@@ -965,12 +990,14 @@ export type ApiUpdate = (
   ApiUpdateChatMembers | ApiUpdateChatParticipantRank | ApiUpdateChatJoin | ApiUpdateChatLeave
   | ApiUpdateChatPinned | ApiUpdatePinnedMessageIds |
   ApiUpdateChatListType | ApiUpdateChatFolder | ApiUpdateChatFoldersOrder | ApiUpdateRecommendedChatFolders |
-  ApiUpdateNewMessage | ApiUpdateMessage | ApiUpdateThreadInfo | ApiUpdateCommonBoxMessages | ApiUpdatePasskeyOption |
+  ApiUpdateNewMessage | ApiUpdateMessage | ApiUpdateNewEphemeralMessage | ApiUpdateEphemeralMessage
+  | ApiUpdateDeleteEphemeralMessages | ApiUpdateThreadInfo | ApiUpdateCommonBoxMessages | ApiUpdatePasskeyOption |
   ApiUpdateDeleteMessages | ApiUpdateMessagePoll | ApiUpdateMessagePollUnread | ApiUpdateMessagePollVote |
   ApiUpdateDeleteHistory |
   ApiDeleteParticipantHistory | ApiUpdateMessageSendSucceeded | ApiUpdateMessageSendFailed |
   ApiUpdateServiceNotification | ApiDeleteContact | ApiUpdateUser | ApiUpdateUserStatus |
-  ApiUpdateUserFullInfo | ApiUpdateVideoProcessingPending | ApiUpdatePeerSettings | ApiUpdateUserAlreadyAuthorized |
+  ApiUpdateUserFullInfo | ApiUpdateVideoProcessingPending | ApiUpdatePeerSettings | ApiUpdatePeerHistoryTtl
+  | ApiUpdateUserAlreadyAuthorized |
   ApiUpdateAvatar | ApiUpdateMessageImage | ApiUpdateDraftMessage | ApiUpdateScheduledMessageSendFailed |
   ApiUpdateError | ApiUpdateResetContacts | ApiUpdateStartEmojiInteraction | ApiUpdateThreadReadState |
   ApiUpdateFavoriteStickers | ApiUpdateStickerSet | ApiUpdateStickerSets | ApiUpdateStickerSetsOrder |

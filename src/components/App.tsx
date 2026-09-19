@@ -26,6 +26,9 @@ import { parseShareId } from '../api/share/shareRoute';
 
 import useTauriDrag from '../hooks/tauri/useTauriDrag';
 import useAppLayout from '../hooks/useAppLayout';
+import useFileHoverOpen, {
+  FILE_HOVER_OPEN_SELECTOR, hasFiles,
+} from '../hooks/useFileHoverOpen';
 import usePrevious from '../hooks/usePrevious';
 import { useSignalEffect } from '../hooks/useSignalEffect';
 import { getIsInBackground } from '../hooks/window/useBackgroundMode';
@@ -115,7 +118,10 @@ const App = ({
       e.preventDefault();
       if (!e.dataTransfer) return;
       if (!(e.target as HTMLElement).dataset.dropzone) {
-        e.dataTransfer.dropEffect = 'none';
+        const isFileHoverOpen = hasFiles(e.dataTransfer)
+          && e.target instanceof Element
+          && Boolean(e.target.closest(FILE_HOVER_OPEN_SELECTOR));
+        e.dataTransfer.dropEffect = isFileHoverOpen ? 'link' : 'none';
       } else {
         e.dataTransfer.dropEffect = 'copy';
       }
@@ -222,6 +228,7 @@ const App = ({
   }
 
   useTauriDrag();
+  useFileHoverOpen();
 
   useLayoutEffect(() => {
     document.body.classList.add(styles.bg);

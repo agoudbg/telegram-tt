@@ -56,10 +56,6 @@ export function selectRightColumnContentKey<T extends GlobalState>(
     RightColumnContent.BoostStatistics
   ) : tabState.monetizationStatistics ? (
     RightColumnContent.MonetizationStatistics
-  ) : tabState.stickerSearch.query !== undefined ? (
-    RightColumnContent.StickerSearch
-  ) : tabState.gifSearch.query !== undefined ? (
-    RightColumnContent.GifSearch
   ) : tabState.newChatMembersProgress !== NewChatMembersProgress.Closed ? (
     RightColumnContent.AddingMembers
   ) : tabState.chatInfo.isOpen && tabState.messageLists.length ? (
@@ -112,6 +108,20 @@ export function selectIsReactionPickerOpen<T extends GlobalState>(
 ) {
   const { reactionPicker } = selectTabState(global, tabId);
   return Boolean(reactionPicker?.position);
+}
+
+export function selectCommunityPanelId<T extends GlobalState>(
+  global: T,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  return selectTabState(global, tabId).communityPanelId;
+}
+
+export function selectIsChatListPanelOpen<T extends GlobalState>(
+  global: T,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  return selectIsForumPanelOpen(global, tabId) || Boolean(selectCommunityPanelId(global, tabId));
 }
 
 export function selectPerformanceSettings<T extends GlobalState>(global: T) {

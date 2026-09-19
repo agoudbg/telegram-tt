@@ -1,4 +1,3 @@
-import type { FC } from '../../../lib/teact/teact';
 import { useEffect, useMemo, useRef } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
@@ -6,6 +5,7 @@ import type {
   ApiAudio, ApiChat, ApiMessage, ApiPeer,
   MediaContent,
 } from '../../../api/types';
+import type { ThreadId } from '../../../types';
 import type { IconName } from '../../../types/icons';
 
 import { PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION } from '../../../config';
@@ -15,7 +15,7 @@ import {
 } from '../../../global/helpers';
 import { getPeerTitle } from '../../../global/helpers/peers';
 import {
-  selectChat, selectChatMessage, selectSender, selectTabState,
+  selectChat, selectChatMessage, selectEphemeralMessage, selectSender, selectTabState,
 } from '../../../global/selectors';
 import { selectMessageMediaDuration } from '../../../global/selectors/media';
 import { makeTrackId } from '../../../util/audioPlayer';
@@ -41,6 +41,7 @@ import DropdownMenu from '../../ui/DropdownMenu';
 import MenuItem from '../../ui/MenuItem';
 import RangeSlider from '../../ui/RangeSlider';
 import RippleEffect from '../../ui/RippleEffect';
+import ShowTransition from '../../ui/ShowTransition';
 
 import './AudioPlayer.scss';
 
@@ -61,7 +62,10 @@ type StateProps = {
   playbackRate: number;
   isPlaybackRateActive?: boolean;
   isMuted: boolean;
+  savedMusicById?: Record<string, true>;
+  isSavedMusicLoading?: boolean;
   timestamp?: number;
+  threadId?: ThreadId;
 };
 
 const PLAYBACK_RATES: Record<number, number> = {
@@ -76,7 +80,7 @@ const PLAYBACK_RATE_VALUES = Object.keys(PLAYBACK_RATES).sort().map(Number);
 const REGULAR_PLAYBACK_RATE = 1;
 const DEFAULT_FAST_PLAYBACK_RATE = 2;
 
-const AudioPlayer: FC<OwnProps & StateProps> = ({
+const AudioPlayer = ({
   message,
   mediaDuration,
   className,
@@ -88,13 +92,18 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
   playbackRate,
   isPlaybackRateActive,
   isMuted,
+  savedMusicById,
+  isSavedMusicLoading,
   timestamp,
+  threadId,
   onPaneStateChange,
-}) => {
+}: OwnProps & StateProps) => {
   const {
     setAudioPlayerVolume,
     setAudioPlayerPlaybackRate,
     setAudioPlayerMuted,
+    loadSavedMusicIds,
+    toggleMusicInProfile,
     focusMessage,
     closeAudioPlayer,
   } = getActions();
@@ -111,7 +120,9 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
   } = useFrozenProps({ message, sender, chat }, !isOpen);
 
   const { audio, voice, video } = renderingMessage ? getMessageContent(renderingMessage) : {} satisfies MediaContent;
+  const isLocalMessage = Boolean(message && isMessageLocal(message));
   const isVoice = Boolean(voice || video);
+  const isMusicSaved = Boolean(audio && savedMusicById?.[audio.id]);
   const shouldRenderPlaybackButton = isVoice || (audio?.duration || 0) > PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION;
   const senderName = renderingSender ? getPeerTitle(lang, renderingSender) : undefined;
 
@@ -144,7 +155,7 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
     true,
     undefined,
     undefined,
-    message && isMessageLocal(message),
+    isLocalMessage,
     true,
   );
 
@@ -166,6 +177,12 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
   } = useContextMenuHandlers(transitionRef, !shouldRender);
 
   useEffect(() => {
+    if (isOpen && audio && !savedMusicById && !isSavedMusicLoading) {
+      loadSavedMusicIds();
+    }
+  }, [isOpen, audio, savedMusicById, isSavedMusicLoading, loadSavedMusicIds]);
+
+  useEffect(() => {
     if (timestamp) {
       setCurrentTime(timestamp);
     }
@@ -179,7 +196,7 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
 
   const handleClick = useLastCallback(() => {
     const { chatId, id } = renderingMessage!;
-    focusMessage({ chatId, messageId: id });
+    focusMessage({ chatId, threadId, messageId: id });
   });
 
   const handleClose = useLastCallback(() => {
@@ -192,6 +209,10 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
     closeAudioPlayer();
     clearMediaSession();
     stop();
+  });
+
+  const handleToggleMusicInProfile = useLastCallback(() => {
+    toggleMusicInProfile({ audio: audio! });
   });
 
   const handleVolumeChange = useLastCallback((value: number) => {
@@ -328,6 +349,32 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
         <RippleEffect />
       </div>
 
+      <ShowTransition
+        isOpen={Boolean(audio && !isLocalMessage && savedMusicById)}
+        className="profile-music-button-wrapper"
+        shouldAnimateFirstRender
+      >
+        <Button
+          round
+          ripple={!isMobile}
+          color="translucent"
+          size="smaller"
+          className="player-button"
+          disabled={isSavedMusicLoading}
+          onClick={handleToggleMusicInProfile}
+          ariaLabel={lang(isMusicSaved ? 'AudioRemoveFromProfile' : 'AudioAddToProfile')}
+        >
+          <Icon
+            name="add-music"
+            className={buildClassName('profile-music-state-icon', isMusicSaved && 'hidden')}
+          />
+          <Icon
+            name="remove-music"
+            className={buildClassName('profile-music-state-icon', !isMusicSaved && 'hidden')}
+          />
+        </Button>
+      </ShowTransition>
+
       <Button
         round
         ripple={!isMobile}
@@ -460,8 +507,10 @@ function renderPlaybackRateMenuItem(
 export default withGlobal<OwnProps>(
   (global, { isHidden }): Complete<StateProps> => {
     const { audioPlayer } = selectTabState(global);
-    const { chatId, messageId } = audioPlayer;
-    const message = !isHidden && chatId && messageId ? selectChatMessage(global, chatId, messageId) : undefined;
+    const { chatId, messageId, threadId } = audioPlayer;
+    const message = !isHidden && chatId && messageId
+      ? selectChatMessage(global, chatId, messageId) || selectEphemeralMessage(global, chatId, messageId)
+      : undefined;
 
     const sender = message && selectSender(global, message);
     const chat = message && selectChat(global, message.chatId);
@@ -480,7 +529,10 @@ export default withGlobal<OwnProps>(
       playbackRate,
       isPlaybackRateActive,
       isMuted,
+      savedMusicById: global.users.savedMusicById,
+      isSavedMusicLoading: global.users.isSavedMusicLoading,
       timestamp,
+      threadId,
       mediaDuration,
     };
   },

@@ -33,6 +33,7 @@ import {
   selectChatScheduledMessages,
   selectCurrentChatMediaSearch,
   selectCurrentSharedMediaSearch,
+  selectEphemeralMessage,
   selectIsChatWithSelf,
   selectListedIds,
   selectOutlyingListByMessageId,
@@ -154,6 +155,12 @@ const MediaViewer = ({
 
   const { media, isSingle } = viewableMedia || {};
 
+  useEffect(() => {
+    if (origin === MediaViewerOrigin.Ephemeral && !currentItem) {
+      closeMediaViewer();
+    }
+  }, [closeMediaViewer, currentItem, origin]);
+
   /* Animation */
   const animationKeyRef = useRef<number>();
   const senderId = message?.senderId || avatarOwner?.id || message?.chatId
@@ -261,7 +268,7 @@ const MediaViewer = ({
   );
   const shouldHideOpeningMedia = shouldStartOpening && !hasStartedOpeningAnimation;
 
-  useEffectWithPrevDeps(([wasOpen, wasHidden]) => {
+  useEffectWithPrevDeps(([wasOpen, wasHidden, prevDimensions]) => {
     if (wasOpen === isOpen && wasHidden === isHidden) return undefined;
 
     if (isGhostAnimation && isOpen && !isHidden && !prevItem) {
@@ -281,9 +288,11 @@ const MediaViewer = ({
 
     // When landing in the Media Editor, the ghost is created on the Edit click and the viewer is
     // closed by the editor, so there is nothing to animate here
-    if (isGhostAnimation && !isOpen && prevItem && !shouldLandInMediaEditor) {
+    if (isGhostAnimation && !isOpen && prevItem && prevDimensions && !shouldLandInMediaEditor) {
       beginHeavyAnimation(ANIMATION_DURATION + ANIMATION_END_DELAY);
-      animateClosing(prevOrigin!, prevBestImageData!, prevMessage, prevItem?.mediaIndex, prevSourceId);
+      animateClosing(
+        prevOrigin!, prevBestImageData!, prevDimensions, prevMessage, prevItem?.mediaIndex, prevSourceId,
+      );
     }
 
     if (!isOpen || isHidden) {
@@ -292,7 +301,7 @@ const MediaViewer = ({
 
     return undefined;
   }, [
-    isOpen, isHidden, bestImageData, dimensions, hasFooter, isGhostAnimation, isVideo, message, origin,
+    isOpen, isHidden, dimensions, bestImageData, hasFooter, isGhostAnimation, isVideo, message, origin,
     prevBestImageData, prevItem, prevMessage, prevOrigin, mediaIndex, sourceId, prevSourceId,
     shouldLandInMediaEditor,
   ]);
@@ -370,6 +379,7 @@ const MediaViewer = ({
 
     handleClose();
 
+    if (origin === MediaViewerOrigin.Ephemeral) return;
     if (!chatId || !messageId) return;
 
     if (isMobile) {
@@ -418,7 +428,7 @@ const MediaViewer = ({
   });
 
   const getNextItem = useLastCallback((from: MediaViewerItem, direction: number): MediaViewerItem | undefined => {
-    if (direction === 0 || isSingle) return undefined;
+    if (direction === 0 || isSingle || origin === MediaViewerOrigin.Ephemeral) return undefined;
 
     if (from.type === 'standalone') {
       const { media: fromMedia, mediaIndex: fromMediaIndex } = from;
@@ -700,7 +710,9 @@ export default memo(withGlobal(
 
     let message: ApiMessage | undefined;
     if (chatId && messageId) {
-      if (origin && [MediaViewerOrigin.ScheduledAlbum, MediaViewerOrigin.ScheduledInline].includes(origin)) {
+      if (origin === MediaViewerOrigin.Ephemeral) {
+        message = selectEphemeralMessage(global, chatId, messageId);
+      } else if (origin && [MediaViewerOrigin.ScheduledAlbum, MediaViewerOrigin.ScheduledInline].includes(origin)) {
         message = selectScheduledMessage(global, chatId, messageId);
       } else {
         message = selectChatMessage(global, chatId, messageId);
@@ -721,7 +733,7 @@ export default memo(withGlobal(
 
     let chatMessages: Record<number, ApiMessage> | undefined;
 
-    if (chatId) {
+    if (chatId && origin !== MediaViewerOrigin.Ephemeral) {
       if (origin && [MediaViewerOrigin.ScheduledAlbum, MediaViewerOrigin.ScheduledInline].includes(origin)) {
         chatMessages = selectChatScheduledMessages(global, chatId);
       } else {

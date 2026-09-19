@@ -74,6 +74,9 @@ export interface LangPair {
   'ProfileCopyPhone': undefined;
   'ContextCopySelected': undefined;
   'ContextCopyText': undefined;
+  'CopyAsText': undefined;
+  'CopyAsHtml': undefined;
+  'CopyAsMarkdown': undefined;
   'ContextArchiveCollapse': undefined;
   'ContextArchiveExpand': undefined;
   'ContextArchiveToMenu': undefined;
@@ -461,7 +464,16 @@ export interface LangPair {
   'FilterEditFolders': undefined;
   'FilterMenuDelete': undefined;
   'FilterShare': undefined;
+  'AutoDeleteMessages': undefined;
+  'AutoDeleteSettingsInfo': undefined;
+  'SetAutoDeleteTimer': undefined;
+  'SetCustomTime': undefined;
+  'AutoDeletePopupTitle': undefined;
+  'AutoDeletePopupDescription': undefined;
+  'AutoDeleteNever': undefined;
   'AutoDeleteConfirm': undefined;
+  'ActionTTLYouDisabled': undefined;
+  'ActionTTLChannelDisabled': undefined;
   'LogOutTitle': undefined;
   'AccDescrGoBack': undefined;
   'SureLogout': undefined;
@@ -691,6 +703,9 @@ export interface LangPair {
   'ErrorPasskeyUnknown': undefined;
   'ErrorUrlExpired': undefined;
   'ErrorUnspecified': undefined;
+  'EphemeralOnlyVisible': undefined;
+  'EphemeralContextMenuNotice': undefined;
+  'EphemeralReplyUnavailable': undefined;
   'NoStickers': undefined;
   'ClearRecentEmoji': undefined;
   'Save': undefined;
@@ -1032,6 +1047,13 @@ export interface LangPair {
   'NewLink': undefined;
   'InviteLink': undefined;
   'SearchStickersHint': undefined;
+  'SearchStickers': undefined;
+  'StickerSearchResult': undefined;
+  'StickerSearchGlobalResult': undefined;
+  'NoStickersFound': undefined;
+  'TrendingStickers': undefined;
+  'TrendingPremiumStickers': undefined;
+  'AccDescrCloseTrendingStickers': undefined;
   'SearchGifsTitle': undefined;
   'ChannelStatsTitle': undefined;
   'GroupStatsTitle': undefined;
@@ -1115,6 +1137,8 @@ export interface LangPair {
   'MessageRepeatPeriodMonthly': undefined;
   'MessageRepeatPeriodYearly': undefined;
   'MessageScheduledRepeatPremium': undefined;
+  'PremiumUnlockEmoji': undefined;
+  'PremiumUnlockStickers': undefined;
   'ChatListFilterErrorEmpty': undefined;
   'ChatListFilterErrorTitleEmpty': undefined;
   'FilterMuted': undefined;
@@ -1143,6 +1167,8 @@ export interface LangPair {
   'Emoji6': undefined;
   'Emoji7': undefined;
   'Emoji8': undefined;
+  'SearchEmoji': undefined;
+  'NoEmojiFound': undefined;
   'GroupInfoDeleteAndExit': undefined;
   'HidAccount': undefined;
   'ConversationViewBot': undefined;
@@ -1236,6 +1262,10 @@ export interface LangPair {
   'AudioPlayerPrevious': undefined;
   'AudioPlayerNext': undefined;
   'AudioPlayerClose': undefined;
+  'AudioAddToProfile': undefined;
+  'AudioRemoveFromProfile': undefined;
+  'AudioSaveToMyProfileSaved': undefined;
+  'AudioSaveToMyProfileUnsaved': undefined;
   'DeleteForMeDescription': undefined;
   'DeleteForEveryoneDescription': undefined;
   'AriaSearchInChat': undefined;
@@ -1357,10 +1387,10 @@ export interface LangPair {
   'RichEditorTableStriped': undefined;
   'RichEditorTableBorderless': undefined;
   'AriaComposerCloseRichInput': undefined;
-  'RichEditorEquation': undefined;
-  'RichEditorEquationPrompt': undefined;
-  'RichEditorEquationToBlock': undefined;
-  'RichEditorEquationToInline': undefined;
+  'RichEditorFormula': undefined;
+  'RichEditorFormulaPrompt': undefined;
+  'RichEditorFormulaToBlock': undefined;
+  'RichEditorFormulaToInline': undefined;
   'FormattingLinkUrl': undefined;
   'FormattingEnterUrl': undefined;
   'FormattedDateModalTitle': undefined;
@@ -1389,6 +1419,8 @@ export interface LangPair {
   'NoSubscribersFound': undefined;
   'GroupManagementBanUserConfirm': undefined;
   'NoLinksFound': undefined;
+  'JoinRequestAcceptAll': undefined;
+  'JoinRequestDismissAll': undefined;
   'JoinRequestAcceptAllTitle': undefined;
   'JoinRequestAcceptAllDescription': undefined;
   'JoinRequestRejectAllTitle': undefined;
@@ -1632,6 +1664,8 @@ export interface LangPair {
   'ProfileTabStories': undefined;
   'ProfileTabStoriesArchive': undefined;
   'ProfileTabGifts': undefined;
+  'ProfileTabPlaylist': undefined;
+  'ProfilePlaylistEmpty': undefined;
   'ProfileTabSubscribers': undefined;
   'ProfileTabMembers': undefined;
   'ProfileTabBotPreview': undefined;
@@ -1787,6 +1821,16 @@ export interface LangPair {
   'ActionGiveawayResultTitle': undefined;
   'ActionGiftPremiumText': undefined;
   'ActionGiftStarsText': undefined;
+  'CommunityOpenPanel': undefined;
+  'CommunityShowAsOneChat': undefined;
+  'CommunityShowAsOneChatHint': undefined;
+  'CommunityChatsYouAreIn': undefined;
+  'CommunityChatsYouCanView': undefined;
+  'CommunityChatsYouCanJoin': undefined;
+  'CommunitySearchChats': undefined;
+  'CommunityNoChatsFound': undefined;
+  'CommunityJoinChatConfirm': undefined;
+  'CommunityChatNotAccessible': undefined;
   'ActionHistoryCleared': undefined;
   'Refunded': undefined;
   'UniqueStatusBenefitsDescription': undefined;
@@ -1931,6 +1975,8 @@ export interface LangPair {
   'PremiumPreviewTodo': undefined;
   'PremiumPreviewAiTools': undefined;
   'PremiumPreviewAiToolsDescription': undefined;
+  'PremiumPreviewRichFormatting': undefined;
+  'PremiumPreviewRichFormattingDescription': undefined;
   'NativeDownloadFailed': undefined;
   'DescriptionAboutGram': undefined;
   'ButtonTopUpViaFragment': undefined;
@@ -2170,6 +2216,7 @@ export interface LangPair {
   'ChatTypePrivate': undefined;
   'ChatTypeGroup': undefined;
   'ChatTypeChannel': undefined;
+  'ChatTypeCommunity': undefined;
   'ChatTypeFallback': undefined;
   'ChatInfoNoMessages': undefined;
   'AttachmentMenuSendAsMedia': undefined;
@@ -2288,6 +2335,13 @@ export interface LangPair {
   'PollModalSettingsTitle': undefined;
   'PollModalAddNoMore': undefined;
   'PollDurationOther': undefined;
+  'AutoDeleteBadgeSeconds': undefined;
+  'AutoDeleteBadgeMinutes': undefined;
+  'AutoDeleteBadgeHours': undefined;
+  'AutoDeleteBadgeDays': undefined;
+  'AutoDeleteBadgeWeeks': undefined;
+  'AutoDeleteBadgeMonths': undefined;
+  'AutoDeleteBadgeYears': undefined;
   'SettingsAccount': undefined;
   'SettingsAccountDesc': undefined;
   'SettingsGeneralDesc': undefined;
@@ -2453,6 +2507,32 @@ export interface LangPairWithVariables<V = LangVariable> {
   'AutodownloadSizeLimitUpTo': {
     'limit': V;
   };
+  'AutoDeleteSetInfo': {
+    'time': V;
+  };
+  'AutoDeleteIn': {
+    'time': V;
+  };
+  'AutoDeleteGlobalActionFromYou': {
+    'time': V;
+  };
+  'AutoDeleteGlobalAction': {
+    'from': V;
+    'time': V;
+  };
+  'ActionTTLYouChanged': {
+    'time': V;
+  };
+  'ActionTTLChanged': {
+    'from': V;
+    'time': V;
+  };
+  'ActionTTLDisabled': {
+    'from': V;
+  };
+  'ActionTTLChannelChanged': {
+    'time': V;
+  };
   'WebAppAddToAttachmentText': {
     'bot': V;
   };
@@ -2540,6 +2620,9 @@ export interface LangPairWithVariables<V = LangVariable> {
   };
   'ErrorRichMessageTableTooWide': {
     'count': V;
+  };
+  'EphemeralOnlyVisibleToBot': {
+    'bot': V;
   };
   'EditedDate': {
     'date': V;
@@ -3445,6 +3528,13 @@ export interface LangPairWithVariables<V = LangVariable> {
   'ActionMigratedTo': {
     'chat': V;
   };
+  'ActionAddedToCommunity': {
+    'from': V;
+    'community': V;
+  };
+  'ActionRemovedFromCommunity': {
+    'from': V;
+  };
   'UniqueStatusWearTitle': {
     'gift': V;
   };
@@ -4208,6 +4298,12 @@ export interface LangPairPluralWithVariables<V = LangVariable> {
   'StickerPackAddStickerCount': {
     'count': V;
   };
+  'StickerPackRemoveEmojiCount': {
+    'count': V;
+  };
+  'StickerPackAddEmojiCount': {
+    'count': V;
+  };
   'ScheduleRepeatEveryMinutes': {
     'count': V;
   };
@@ -4393,6 +4489,12 @@ export interface LangPairPluralWithVariables<V = LangVariable> {
   };
   'ActionBoostApply': {
     'from': V;
+    'count': V;
+  };
+  'CommunityChatsCount': {
+    'count': V;
+  };
+  'CommunityWithChats': {
     'count': V;
   };
   'ConfirmationModalPaymentForMessage': {

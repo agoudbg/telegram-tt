@@ -118,7 +118,7 @@ export const INITIAL_SHARED_STATE: SharedState = {
 };
 
 export const INITIAL_GLOBAL_STATE: GlobalState = {
-  cacheVersion: 5,
+  cacheVersion: 6,
   isInited: true,
   attachMenu: { bots: {} },
   passcode: {},
@@ -155,6 +155,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     fullInfoById: {},
     previewMediaByBotId: {},
     commonChatsById: {},
+    savedMusicByPeerId: {},
     botAppPermissionsById: {},
   },
 
@@ -280,6 +281,8 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
 
   emojiKeywords: {},
 
+  emojiGroups: {},
+
   gifs: {
     saved: {},
   },
@@ -358,9 +361,6 @@ export const INITIAL_TAB_STATE: TabState = {
   newChatMembersProgress: NewChatMembersProgress.Closed,
   uiReadyState: 0,
   shouldInit: true,
-
-  gifSearch: {},
-  stickerSearch: {},
 
   messageLists: [],
   activeChatFolder: 0,

@@ -2,6 +2,7 @@ import type {
   ApiAiComposeTone,
   ApiAttachBot,
   ApiAttachment,
+  ApiAudio,
   ApiBirthday,
   ApiChat,
   ApiChatAdminRights,
@@ -19,6 +20,7 @@ import type {
   ApiGeoPoint,
   ApiGlobalMessageSearchType,
   ApiInputAiComposeTone,
+  ApiInputEphemeralReplyInfo,
   ApiInputInvoice,
   ApiInputInvoiceStarGift,
   ApiInputMessageReplyInfo,
@@ -118,6 +120,7 @@ import type {
   WebPageMediaSize,
 } from '../../types';
 import type { BrowserModalStateType, BrowserTab } from '../../types/browser';
+import type { ClipboardTextFormat, MessageCopyRequest } from '../../types/messageCopy';
 import type { WebApp, WebAppOutboundEvent } from '../../types/webapp';
 import type { DownloadableMedia } from '../helpers';
 import type { SharedState } from './sharedState';
@@ -162,17 +165,16 @@ export interface ActionPayloads {
   loginWithPasskey: undefined;
 
   // stickers & GIFs
-  setStickerSearchQuery: { query?: string } & WithTabId;
   saveGif: {
     gif: ApiVideo;
     shouldUnsave?: boolean;
   } & WithTabId;
-  setGifSearchQuery: { query?: string } & WithTabId;
-  searchMoreGifs: WithTabId | undefined;
   faveSticker: { sticker: ApiSticker } & WithTabId;
   unfaveSticker: { sticker: ApiSticker };
   toggleStickerSet: { stickerSetId: string };
   loadEmojiKeywords: { language: string };
+  loadEmojiSearchGroups: undefined;
+  loadEmojiStickerGroups: undefined;
 
   // groups
   togglePreHistoryHidden: {
@@ -393,6 +395,10 @@ export interface ActionPayloads {
     chatId: string;
     isProtected: boolean;
   };
+  setChatHistoryTtl: {
+    chatId: string;
+    period: number;
+  };
   preloadTopChatMessages: undefined;
   loadAllChats: {
     listType: ChatListType;
@@ -524,6 +530,10 @@ export interface ActionPayloads {
     onLoaded?: NoneToVoidFunction;
     onError?: NoneToVoidFunction;
   } & WithTabId;
+  cleanupExpiredTtlMessages: {
+    chatId?: string;
+    messageIds?: number[];
+  } | undefined;
   sendMessage: Partial<SendMessageParams> & WithTabId;
   sendMessages: {
     sendParams: SendMessageParams[];
@@ -551,6 +561,10 @@ export interface ActionPayloads {
     shouldDeleteForAll?: boolean;
     messageList?: MessageList;
   } & WithTabId;
+  deleteEphemeralMessage: {
+    chatId: string;
+    messageId: number;
+  };
   resetLocalPaidMessages: WithTabId | undefined;
   deleteParticipantHistory: {
     peerId: string;
@@ -929,9 +943,11 @@ export interface ActionPayloads {
   };
   resetLeftColumnWidth: undefined;
 
-  copySelectedMessages: WithTabId | undefined;
+  copySelectedMessages: ({ shouldNotify?: boolean } & WithTabId) | undefined;
   copyMessagesByIds: {
-    messageIds?: number[];
+    request: MessageCopyRequest;
+    shouldNotify?: boolean;
+    textFormat?: ClipboardTextFormat;
   } & WithTabId;
   openSeenByModal: {
     chatId: string;
@@ -1091,7 +1107,7 @@ export interface ActionPayloads {
   } & WithTabId;
   scrollMessageListToBottom: WithTabId | undefined;
 
-  updateDraftReplyInfo: Partial<ApiInputMessageReplyInfo> & WithTabId;
+  updateDraftReplyInfo: (Partial<ApiInputMessageReplyInfo> | ApiInputEphemeralReplyInfo) & WithTabId;
   resetDraftReplyInfo: WithTabId | undefined;
   updateDraftSuggestedPostInfo: Partial<ApiInputSuggestedPostInfo> & WithTabId;
   resetDraftSuggestedPostInfo: WithTabId | undefined;
@@ -1192,6 +1208,13 @@ export interface ActionPayloads {
   };
   toggleChannelRecommendations: {
     chatId: string;
+  };
+  loadCommunities: undefined;
+  loadFullCommunity: {
+    communityId: string;
+  };
+  toggleCommunityCollapsed: {
+    communityId: string;
   };
   updateChatMutedState: {
     chatId: string;
@@ -1330,6 +1353,10 @@ export interface ActionPayloads {
     chatId: string;
   } & WithTabId;
   closeForumPanel: WithTabId | undefined;
+  openCommunityPanel: {
+    communityId: string;
+  } & WithTabId;
+  closeCommunityPanel: WithTabId | undefined;
 
   toggleParticipantsHidden: {
     chatId: string;
@@ -1930,6 +1957,8 @@ export interface ActionPayloads {
   setAudioPlayerOrigin: {
     origin: AudioOrigin;
   } & WithTabId;
+  loadSavedMusicIds: undefined;
+  toggleMusicInProfile: { audio: ApiAudio } & WithTabId;
 
   // Downloads
   downloadSelectedMessages: WithTabId | undefined;
@@ -1994,6 +2023,9 @@ export interface ActionPayloads {
   deleteContact: { userId: string };
   loadUser: { userId: string };
   loadCommonChats: {
+    userId: string;
+  };
+  loadSavedMusic: {
     userId: string;
   };
   reportSpam: { chatId: string } & WithTabId;
@@ -2149,6 +2181,7 @@ export interface ActionPayloads {
   loadRecentStickers: undefined;
   loadFavoriteStickers: undefined;
   loadFeaturedStickers: undefined;
+  hideTrendingStickers: undefined;
   loadDiceStickers: undefined;
 
   reorderStickerSets: {
@@ -2204,6 +2237,7 @@ export interface ActionPayloads {
   sendBotCommand: {
     command: string;
     chatId?: string;
+    botId?: string;
   } & WithTabId;
   loadTopPeers: {
     category: ApiTopPeerCategory;
@@ -2703,6 +2737,8 @@ export interface ActionPayloads {
     isOnlyInvites?: boolean;
   } & WithTabId;
   closeShareChatFolderModal: undefined | WithTabId;
+  loadDefaultHistoryTtl: undefined;
+  setDefaultHistoryTtl: { period: number };
   loadGlobalPrivacySettings: undefined;
   updateGlobalPrivacySettings: {
     shouldArchiveAndMuteNewNonContact?: boolean;
@@ -2807,6 +2843,11 @@ export interface ActionPayloads {
     nextOwnerId?: string;
   } & WithTabId;
   closeLeaveGroupModal: WithTabId | undefined;
+
+  openAutoDeleteTimerModal: {
+    chatId: string;
+  } & WithTabId;
+  closeAutoDeleteTimerModal: WithTabId | undefined;
 
   openTwoFaCheckModal: WithTabId | undefined;
   closeTwoFaCheckModal: WithTabId | undefined;

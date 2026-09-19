@@ -39,7 +39,6 @@ import useDerivedSignal from '../../hooks/useDerivedSignal';
 import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
-import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
 import useResizeObserver from '../../hooks/useResizeObserver';
 import useMessageObservers from './hooks/useMessageObservers';
 import useScrollHooks from './hooks/useScrollHooks';
@@ -60,6 +59,7 @@ interface OwnProps {
   chatId: string;
   threadId: ThreadId;
   messageIds: number[];
+  historyMessageIds: number[];
   messageGroups: MessageDateGroup[];
   getContainerHeight: Signal<number | undefined>;
   isViewportNewest: boolean;
@@ -86,6 +86,7 @@ interface OwnProps {
   nameChangeDate?: number;
   photoChangeDate?: number;
   noAppearanceAnimation: boolean;
+  addedMessageIds?: number[];
   isSavedDialog?: boolean;
   isQuickPreview?: boolean;
   canPost?: boolean;
@@ -116,6 +117,7 @@ const MessageListContent = ({
   chatId,
   threadId,
   messageIds,
+  historyMessageIds,
   messageGroups,
   getContainerHeight,
   isViewportNewest,
@@ -142,6 +144,7 @@ const MessageListContent = ({
   nameChangeDate,
   photoChangeDate,
   noAppearanceAnimation,
+  addedMessageIds,
   isSavedDialog,
   isQuickPreview,
   shouldScrollToBottom,
@@ -201,7 +204,7 @@ const MessageListContent = ({
   } = useScrollHooks({
     type,
     containerRef,
-    messageIds,
+    messageIds: historyMessageIds,
     getContainerHeight,
     isViewportNewest,
     isUnread,
@@ -331,11 +334,6 @@ const MessageListContent = ({
   }, 0);
   let appearanceIndex = 0;
 
-  const prevMessageIds = usePreviousDeprecated(messageIds);
-  const isNewMessage = Boolean(
-    messageIds && prevMessageIds && messageIds[messageIds.length - 2] === prevMessageIds[prevMessageIds.length - 1],
-  );
-
   function calculateSenderGroups(
     dateGroup: MessageDateGroup, dateGroupIndex: number, dateGroupsArray: MessageDateGroup[],
   ) {
@@ -368,7 +366,7 @@ const MessageListContent = ({
             observeIntersectionForPlaying={observeIntersectionForPlaying}
             memoFirstUnreadIdRef={memoFirstUnreadIdRef}
             appearanceOrder={messageCountToAnimate - ++appearanceIndex}
-            isJustAdded={isLastInList && isNewMessage}
+            isJustAdded={addedMessageIds?.includes(message.id)}
             isLastInList={isLastInList}
             getIsMessageListReady={getIsReady}
             onMessageUnmount={onMessageUnmount}
@@ -401,6 +399,8 @@ const MessageListContent = ({
           const key = isServiceNotificationMessage(message)
             ? `${message.date}_${originalId}` : originalId;
           const shouldShowGuestAvatar = isPrivate && !withUsers && Boolean(message.guestChatViaId);
+          const isJustAdded = addedMessageIds?.includes(message.id)
+            || Boolean(album?.messages.some(({ id }) => addedMessageIds?.includes(id)));
 
           return compact([
             message.id === memoUnreadDividerBeforeIdRef.current && unreadDivider,
@@ -424,7 +424,7 @@ const MessageListContent = ({
               noComments={shouldHideComments}
               noReplies={!shouldHideComments || threadId !== MAIN_THREAD_ID || type === 'scheduled'}
               appearanceOrder={messageCountToAnimate - ++appearanceIndex}
-              isJustAdded={position.isLastInList && isNewMessage}
+              isJustAdded={isJustAdded}
               isThreadTop={isThreadTopMessage}
               isFirstInGroup={position.isFirstInGroup}
               isLastInGroup={position.isLastInGroup}

@@ -3,6 +3,7 @@ import { memo, useEffect, useMemo, useRef, useState } from '@teact';
 import { getActions, getGlobal, withGlobal } from '../../global';
 
 import type {
+  ApiAudio,
   ApiBotPreviewMedia,
   ApiChat,
   ApiChatFullInfo,
@@ -62,6 +63,7 @@ import {
   selectUser,
   selectUserCommonChats,
   selectUserFullInfo,
+  selectUserSavedMusic,
 } from '../../global/selectors';
 import { selectPremiumLimit } from '../../global/selectors/limits';
 import { selectMessageDownloadableMedia } from '../../global/selectors/media';
@@ -104,6 +106,7 @@ import useTransitionFixes from './hooks/useTransitionFixes';
 
 import AnimatedIconWithPreview from '../common/AnimatedIconWithPreview';
 import Audio from '../common/Audio';
+import Avatar from '../common/Avatar';
 import Document from '../common/Document';
 import SavedGift from '../common/gift/SavedGift';
 import GroupChatInfo from '../common/GroupChatInfo';
@@ -113,6 +116,7 @@ import PreviewMedia from '../common/PreviewMedia';
 import PrivateChatInfo from '../common/PrivateChatInfo';
 import ChatExtra from '../common/profile/ChatExtra';
 import ProfileInfo from '../common/profile/ProfileInfo.tsx';
+import ProfileMusic from '../common/ProfileMusic';
 import WebLink from '../common/WebLink';
 import Island from '../gili/layout/Island';
 import Surface from '../gili/layout/Surface';
@@ -143,6 +147,8 @@ type OwnProps = {
 
 type StateProps = {
   monoforumChannel?: ApiChat;
+  linkedCommunity?: ApiChat;
+  linkedCommunityChatsCount?: number;
   theme: ThemeKey;
   isChannel?: boolean;
   isBot?: boolean;
@@ -155,6 +161,9 @@ type StateProps = {
   hasMembersTab?: boolean;
   hasPreviewMediaTab?: boolean;
   hasGiftsTab?: boolean;
+  hasPlaylistTab?: boolean;
+  playlistById?: Record<string, ApiAudio>;
+  playlistIds?: string[];
   gifts?: ApiSavedStarGift[];
   storyAlbums?: ApiStoryAlbum[];
   giftCollections?: ApiStarGiftCollection[];
@@ -229,6 +238,9 @@ const SHARED_MEDIA_TYPES = new Set<StringAutocomplete<SharedMediaType>>([
 const NON_ISLAND_TABS = new Set<ProfileTabType>([
   'media', 'gif', 'stories', 'storiesArchive', 'previewMedia', 'gifts',
 ]);
+const MESSAGE_BASED_TABS = new Set<ProfileTabType>([
+  'media', 'gif', 'documents', 'links', 'audio', 'voice',
+]);
 
 const CONTENT_LIST_CLASS: Record<string, string> = {
   media: styles.mediaList,
@@ -236,6 +248,7 @@ const CONTENT_LIST_CLASS: Record<string, string> = {
   links: styles.linksList,
   audio: styles.audioList,
   voice: styles.voiceList,
+  playlist: styles.playlistList,
   gif: styles.gifList,
   stories: styles.storiesList,
   storiesArchive: styles.storiesArchiveList,
@@ -255,6 +268,8 @@ const Profile = ({
   profileState,
   theme,
   monoforumChannel,
+  linkedCommunity,
+  linkedCommunityChatsCount,
   isChannel,
   isBot,
   currentUserId,
@@ -273,6 +288,9 @@ const Profile = ({
   hasMembersTab,
   hasPreviewMediaTab,
   hasGiftsTab,
+  hasPlaylistTab,
+  playlistById,
+  playlistIds,
   gifts,
   storyAlbums,
   giftCollections,
@@ -311,6 +329,8 @@ const Profile = ({
     setSharedMediaSearchType,
     loadMoreMembers,
     loadCommonChats,
+    loadSavedMusic,
+    loadSavedMusicIds,
     openChat,
     searchSharedMediaMessages,
     openMediaViewer,
@@ -332,6 +352,8 @@ const Profile = ({
     setMainProfileTab,
     openEditRankModal,
     openDeleteMemberModal,
+    loadFullCommunity,
+    openCommunityPanel,
   } = getActions();
 
   const containerRef = useRef<HTMLDivElement>();
@@ -371,6 +393,10 @@ const Profile = ({
 
     if (hasGiftsTab) {
       arr.push({ type: 'gifts', key: 'ProfileTabGifts' });
+    }
+
+    if (hasPlaylistTab) {
+      arr.push({ type: 'playlist', key: 'ProfileTabPlaylist' });
     }
 
     if (hasStoriesTab && isOwnProfile) {
@@ -438,7 +464,8 @@ const Profile = ({
       } satisfies TabWithPropertiesAndType;
     });
   }, [
-    isGeneralSavedMessages, hasStoriesTab, hasGiftsTab, hasMembersTab, hasPreviewMediaTab, isTopicInfo,
+    isGeneralSavedMessages, hasStoriesTab, hasGiftsTab, hasPlaylistTab, hasMembersTab, hasPreviewMediaTab,
+    isTopicInfo,
     hasCommonChatsTab, isChannel, isBot, similarChannels?.length, similarBots?.length, lang, isOwnProfile,
     mainTab, chatId, canUpdateMainTab, validMainTabTypes,
   ]);
@@ -489,6 +516,17 @@ const Profile = ({
       loadBotRecommendations({ userId: chatId });
     }
   }, [chatId, isBot, similarBots, isSynced]);
+
+  useEffect(() => {
+    if (isActive && linkedCommunity && linkedCommunityChatsCount === undefined) {
+      loadFullCommunity({ communityId: linkedCommunity.id });
+    }
+  }, [isActive, linkedCommunity, linkedCommunityChatsCount]);
+
+  const handleOpenLinkedCommunity = useLastCallback(() => {
+    if (!linkedCommunity) return;
+    openCommunityPanel({ communityId: linkedCommunity.id });
+  });
 
   useEffect(() => {
     resetSelectedStoryAlbum();
@@ -549,6 +587,10 @@ const Profile = ({
   const handleLoadGifts = useLastCallback(() => {
     loadPeerSavedGifts({ peerId: chatId });
   });
+  const handleLoadSavedMusic = useLastCallback(() => {
+    if (!isSynced) return;
+    loadSavedMusic({ userId: chatId });
+  });
 
   const handleLoadMoreMembers = useLastCallback(() => {
     if (!isSynced) return;
@@ -584,6 +626,7 @@ const Profile = ({
     loadStories: handleLoadPeerStories,
     loadStoriesArchive: handleLoadStoriesArchive,
     loadMoreGifts: handleLoadGifts,
+    loadSavedMusic: handleLoadSavedMusic,
     loadCommonChats: handleLoadCommonChats,
     tabType,
     mediaSearchType,
@@ -597,6 +640,7 @@ const Profile = ({
     threadId,
     storyIds,
     giftIds,
+    playlistIds,
     pinnedStoryIds,
     archiveStoryIds,
     similarChannels,
@@ -610,6 +654,13 @@ const Profile = ({
       getMore({ direction: LoadMoreDirection.Backwards });
     }
   }, [getMore, viewportIds, resultType, isSynced]);
+
+  useEffect(() => {
+    // Needed to tell whether each track is already on the current user's own profile
+    if (resultType === 'playlist') {
+      loadSavedMusicIds();
+    }
+  }, [resultType]);
 
   const shouldRenderProfileInfo = !noProfileInfo && !isSavedMessages;
 
@@ -884,8 +935,7 @@ const Profile = ({
       );
     }
 
-    const needsMessages = resultType === 'media' || resultType === 'gif' || resultType === 'documents'
-      || resultType === 'links' || resultType === 'audio' || resultType === 'voice';
+    const needsMessages = MESSAGE_BASED_TABS.has(resultType);
     const noContent = (!viewportIds && !botPreviewMedia) || !canRenderContent || (needsMessages && !messagesById);
     const noSpinner = isFirstTab && !canRenderContent;
 
@@ -995,6 +1045,9 @@ const Profile = ({
         case 'gif':
           text = oldLang('lng_media_gif_empty');
           break;
+        case 'playlist':
+          text = lang('ProfilePlaylistEmpty');
+          break;
         default:
           text = oldLang('SharedMedia.EmptyTitle');
       }
@@ -1002,6 +1055,20 @@ const Profile = ({
       return (
         <div className={buildClassName(styles.content, styles.emptyList)}>
           <NothingFound text={text} />
+        </div>
+      );
+    }
+
+    if (resultType === 'playlist') {
+      return (
+        <div className={buildClassName(styles.content, CONTENT_LIST_CLASS[resultType])}>
+          {(viewportIds as string[]).filter((id) => Boolean(playlistById?.[id])).map((id) => (
+            <ProfileMusic
+              key={id}
+              audio={playlistById![id]}
+              className="scroll-item"
+            />
+          ))}
         </div>
       );
     }
@@ -1122,6 +1189,7 @@ const Profile = ({
               className="chat-item-clickable contact-list-item scroll-item small-icon"
 
               onClick={() => handleMemberClick(id)}
+              onFileHoverOpen={() => handleMemberClick(id)}
               contextActions={getMemberContextAction(id)}
               withPortalForMenu
             >
@@ -1256,6 +1324,12 @@ const Profile = ({
   })();
 
   function renderProfileInfo(peerId: string, isReady: boolean) {
+    const linkedCommunityStatus = linkedCommunityChatsCount !== undefined
+      ? lang('CommunityWithChats', {
+        count: linkedCommunityChatsCount,
+      }, { pluralValue: linkedCommunityChatsCount })
+      : undefined;
+
     return (
       <div className={buildClassName(styles.profileInfo, 'profile-info')}>
         <ProfileInfo
@@ -1266,6 +1340,28 @@ const Profile = ({
           isForMonoforum={Boolean(monoforumChannel)}
           onExpand={handleExpandProfile}
         />
+        {linkedCommunity && (
+          <Island className={styles.linkedCommunityIsland}>
+            <ListItem
+              leftElement={(
+                <Avatar
+                  className={styles.linkedCommunityAvatar}
+                  peer={linkedCommunity}
+                  size="medium"
+                />
+              )}
+              multiline
+              narrow
+              ripple
+              onClick={handleOpenLinkedCommunity}
+            >
+              <span className="title" dir="auto">{renderText(linkedCommunity.title)}</span>
+              {linkedCommunityStatus && (
+                <span className="subtitle" dir="auto">{linkedCommunityStatus}</span>
+              )}
+            </ListItem>
+          </Island>
+        )}
         <ChatExtra
           chatOrUserId={profileId}
           isSavedDialog={isSavedDialog}
@@ -1405,8 +1501,7 @@ export default memo(withGlobal<OwnProps>(
     const areMembersHidden = hasMembersTab && chat
       && (chat.isForbidden || (chatFullInfo && !chatFullInfo.canViewMembers));
     const canAddMembers = hasMembersTab && chat
-      && (getHasAdminRight(chat, 'inviteUsers') || (!isChannel && !isUserRightBanned(chat, 'inviteUsers'))
-        || chat.isCreator);
+      && (getHasAdminRight(chat, 'inviteUsers') || (!isChannel && !isUserRightBanned(chat, 'inviteUsers')));
     const canDeleteMembers = hasMembersTab && selectCanBanUsers(global, chatId);
     const activeDownloads = selectActiveDownloads(global);
     const { similarChannelIds } = selectSimilarChannelIds(global, chatId) || {};
@@ -1435,6 +1530,10 @@ export default memo(withGlobal<OwnProps>(
     const archiveStoryIds = peerStories?.archiveIds;
 
     const hasGiftsTab = Boolean(peerFullInfo?.starGiftCount) && !isSavedMessages;
+
+    // `savedMusic` holds the track shown on the profile, so its presence means the peer has a playlist
+    const hasPlaylistTab = Boolean(userFullInfo?.savedMusic) && !isSavedMessages;
+    const savedMusic = hasPlaylistTab ? selectUserSavedMusic(global, chatId) : undefined;
     const activeCollectionId = selectActiveGiftsCollectionId(global, chatId);
     const peerGifts = savedGifts.collectionsByPeerId[chatId]?.[activeCollectionId];
 
@@ -1442,6 +1541,11 @@ export default memo(withGlobal<OwnProps>(
     const giftCollections = global.starGiftCollections?.byPeerId?.[chatId];
 
     const monoforumChannel = selectMonoforumChannel(global, chatId);
+    const linkedCommunityId = chat?.linkedCommunityId;
+    const linkedCommunity = linkedCommunityId ? selectChat(global, linkedCommunityId) : undefined;
+    const linkedCommunityChatsCount = linkedCommunityId
+      ? selectChatFullInfo(global, linkedCommunityId)?.linkedPeers?.length
+      : undefined;
     const isRestricted = chat && selectIsChatRestricted(global, chat.id);
     const hasAvatar = Boolean(peer?.avatarPhotoId);
 
@@ -1470,6 +1574,9 @@ export default memo(withGlobal<OwnProps>(
       chatsById,
       storyIds,
       hasGiftsTab,
+      hasPlaylistTab,
+      playlistById: savedMusic?.byId,
+      playlistIds: savedMusic?.ids,
       gifts: peerGifts?.gifts,
       storyAlbums,
       giftCollections,
@@ -1496,6 +1603,8 @@ export default memo(withGlobal<OwnProps>(
       adminMembersById: hasMembersTab ? adminMembersById : undefined,
       commonChatIds: commonChats?.ids,
       monoforumChannel,
+      linkedCommunity,
+      linkedCommunityChatsCount,
       hasAvatar,
       peerFullInfo,
       canUpdateMainTab: selectCanUpdateMainTab(global, chatId),

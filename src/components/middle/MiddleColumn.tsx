@@ -2,7 +2,7 @@ import type { ElementRef } from '@teact';
 import { memo, useEffect, useRef, useState } from '@teact';
 import { getActions, withGlobal } from '../../global';
 
-import type { ApiChat, ApiChatBannedRights, ApiInputMessageReplyInfo, ApiTopic } from '../../api/types';
+import type { ApiChat, ApiChatBannedRights, ApiInputDraftReplyInfo, ApiTopic } from '../../api/types';
 import type { ActiveEmojiInteraction, AnimationLevel, MessageListType, ThemeKey, ThreadId } from '../../types';
 import type { PaneState } from './hooks/useHeaderPane';
 import { MAIN_THREAD_ID } from '../../api/types';
@@ -118,7 +118,7 @@ type StateProps = {
   isComments?: boolean;
   messageListType?: MessageListType;
   chat?: ApiChat;
-  draftReplyInfo?: ApiInputMessageReplyInfo;
+  draftReplyInfo?: ApiInputDraftReplyInfo;
   isPrivate?: boolean;
   isPinnedMessageList?: boolean;
   canPost?: boolean;
@@ -807,7 +807,7 @@ export default memo(withGlobal<OwnProps>(
 
     const canUnpin = chat && (
       isPrivate || (
-        chat?.isCreator || (!isChannel && !isUserRightBanned(chat, 'pinMessages'))
+        (!isChannel && !isUserRightBanned(chat, 'pinMessages'))
         || getHasAdminRight(chat, 'pinMessages')
       )
     );

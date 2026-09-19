@@ -1,6 +1,6 @@
+import type { ClipboardTextFormat, MessageCopyRequest } from '../../../types/messageCopy';
 import type {
   ActionReturnType,
-  GlobalState,
 } from '../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 import { type ActiveDownloads, FocusDirection } from '../../../types';
@@ -12,22 +12,19 @@ import {
 } from '../../../config';
 import { cancelScrollBlockingAnimation, isAnimatingScroll } from '../../../util/animateScroll';
 import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
-import { copyHtmlToClipboard } from '../../../util/clipboard';
+import { copyTextToClipboardFromPromise } from '../../../util/clipboard';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { compact, findLast } from '../../../util/iteratees';
-import { getTranslationFn } from '../../../util/localization';
+import { Bundles, loadBundle } from '../../../util/moduleLoader';
 import {
   getMediaFilename,
   getMediaFormat,
   getMediaHash,
-  getMessageStatefulContent,
-  isChatChannel,
 } from '../../helpers';
-import { getMessageSummaryText } from '../../helpers/messageSummary';
 import { addTabStateResetterAction } from '../../helpers/meta';
-import { getPeerTitle } from '../../helpers/peers';
-import { renderMessageSummaryHtml } from '../../helpers/renderMessageSummaryHtml';
-import { addActionHandler, getGlobal, setGlobal } from '../../index';
+import {
+  addActionHandler, getActions, getGlobal, setGlobal,
+} from '../../index';
 import {
   addActiveMediaDownload,
   cancelMessageMediaDownload,
@@ -42,11 +39,11 @@ import { replaceTabThreadParam, replaceThreadLocalStateParam, updateThreadReadSt
 import {
   selectAllowedMessageActionsSlow,
   selectCanForwardMessage,
+  selectCanForwardMessages,
   selectChat,
   selectChatLastMessageId,
   selectChatMessage,
   selectChatMessages,
-  selectChatScheduledMessages,
   selectCurrentChat,
   selectCurrentMessageList,
   selectForwardedMessageIdsByGroupId,
@@ -55,7 +52,6 @@ import {
   selectMessageIdsByGroupId,
   selectRequestedChatTranslationLanguage,
   selectRequestedMessageTranslationLanguage,
-  selectSender,
   selectTabState,
   selectViewportIds,
 } from '../../selectors';
@@ -154,6 +150,8 @@ addActionHandler('replyToNextMessage', (global, actions, payload): ActionReturnT
   }
 
   const replyInfo = selectDraft(global, chatId, threadId)?.replyInfo;
+  if (replyInfo?.type === 'ephemeral') return;
+
   const isLatest = selectIsViewportNewest(global, chatId, threadId, tabId);
 
   let messageId: number | undefined;
@@ -561,10 +559,13 @@ addActionHandler('openForwardMenu', (global, actions, payload): ActionReturnType
   if (groupedId) {
     groupedMessageIds = selectMessageIdsByGroupId(global, fromChatId, groupedId);
   }
+  const resolvedMessageIds = groupedMessageIds || messageIds;
+  if (resolvedMessageIds && !selectCanForwardMessages(global, fromChatId, resolvedMessageIds)) return;
+
   return updateTabState(global, {
     forwardMessages: {
       fromChatId,
-      messageIds: groupedMessageIds || messageIds,
+      messageIds: resolvedMessageIds,
       storyId,
       withMyScore,
     },
@@ -764,6 +765,8 @@ addActionHandler('openPollModal', (global, actions, payload): ActionReturnType =
     isQuiz,
     tabId = getCurrentTabId(),
   } = payload;
+  const replyInfo = selectDraft(global, chatId, threadId ?? MAIN_THREAD_ID)?.replyInfo;
+  if (replyInfo?.type === 'ephemeral') return;
 
   return updateTabState(global, {
     pollModal: {
@@ -780,6 +783,11 @@ addActionHandler('openTodoListModal', (global, actions, payload): ActionReturnTy
   const {
     chatId, messageId, forNewTask, tabId = getCurrentTabId(),
   } = payload;
+  const currentMessageList = selectCurrentMessageList(global, tabId);
+  if (!messageId && currentMessageList?.chatId === chatId) {
+    const replyInfo = selectDraft(global, chatId, currentMessageList.threadId)?.replyInfo;
+    if (replyInfo?.type === 'ephemeral') return;
+  }
 
   return updateTabState(global, {
     todoListModal: {
@@ -899,24 +907,38 @@ addActionHandler('closeChatLanguageModal', (global, actions, payload): ActionRet
 });
 
 addActionHandler('copySelectedMessages', (global, actions, payload): ActionReturnType => {
-  const { tabId = getCurrentTabId() } = payload || {};
+  const { shouldNotify, tabId = getCurrentTabId() } = payload || {};
   const tabState = selectTabState(global, tabId);
-  if (!tabState.selectedMessages) {
+  const selectedMessages = tabState.selectedMessages;
+  const messageList = selectCurrentMessageList(global, tabId);
+  if (!selectedMessages?.messageIds.length || !messageList || messageList.chatId !== selectedMessages.chatId) {
+    if (shouldNotify) actions.showNotification({ message: { key: 'GeneralError' }, tabId });
     return;
   }
 
-  const { chatId, messageIds } = tabState.selectedMessages;
-  copyTextForMessages(global, chatId, messageIds);
+  const { chatId, messageIds } = selectedMessages;
+  copyTextForMessages({
+    request: {
+      type: 'messages',
+      chatId,
+      threadId: messageList.threadId,
+      messageListType: messageList.type,
+      messageIds,
+      withSenderHeaders: true,
+    },
+    shouldNotify,
+  }, tabId);
 });
 
 addActionHandler('copyMessagesByIds', (global, actions, payload): ActionReturnType => {
-  const { messageIds, tabId = getCurrentTabId() } = payload;
-  const chat = selectCurrentChat(global, tabId);
-  if (!messageIds || messageIds.length === 0 || !chat) {
+  const { tabId = getCurrentTabId() } = payload;
+  const { request } = payload;
+  if (request.type === 'messages' && !request.messageIds.length) {
+    if (payload.shouldNotify) actions.showNotification({ message: { key: 'GeneralError' }, tabId });
     return;
   }
 
-  copyTextForMessages(global, chat.id, messageIds);
+  copyTextForMessages(payload, tabId);
 });
 
 addActionHandler('openOneTimeMediaModal', (global, actions, payload): ActionReturnType => {
@@ -1033,39 +1055,30 @@ addActionHandler('closeSuggestedPostApprovalModal', (global, actions, payload): 
   }, tabId);
 });
 
-function copyTextForMessages(global: GlobalState, chatId: string, messageIds: number[]) {
-  const { type: messageListType, threadId } = selectCurrentMessageList(global) || {};
-  const lang = getTranslationFn();
+function copyTextForMessages(
+  payload: { request: MessageCopyRequest; shouldNotify?: boolean; textFormat?: ClipboardTextFormat },
+  tabId: number,
+) {
+  const { showNotification } = getActions();
+  const { request, shouldNotify, textFormat } = payload;
+  const messageList = {
+    chatId: request.chatId,
+    threadId: request.threadId,
+    type: request.messageListType,
+  };
 
-  const chat = selectChat(global, chatId);
+  const contentPromise = loadBundle(Bundles.Editor).then((bundle) => bundle.buildMessageCopyContent(
+    messageList,
+    request,
+    tabId,
+  ));
 
-  const chatMessages = messageListType === 'scheduled'
-    ? selectChatScheduledMessages(global, chatId)
-    : selectChatMessages(global, chatId);
-
-  if (!chat || !chatMessages || !threadId) return;
-
-  const messages = messageIds
-    .map((id) => chatMessages[id])
-    .filter((message) => selectAllowedMessageActionsSlow(global, message, threadId).canCopy)
-    .sort((message1, message2) => message1.id - message2.id);
-
-  const resultHtml: string[] = [];
-  const resultText: string[] = [];
-
-  messages.forEach((message) => {
-    const sender = isChatChannel(chat) ? chat : selectSender(global, message);
-    const senderTitle = `> ${sender ? getPeerTitle(lang, sender) : message.forwardInfo?.hiddenUserName || ''}:`;
-    const statefulContent = getMessageStatefulContent(global, message);
-
-    resultHtml.push(senderTitle);
-    resultHtml.push(`${renderMessageSummaryHtml(lang, message)}\n`);
-
-    resultText.push(senderTitle);
-    resultText.push(`${getMessageSummaryText(lang, message, statefulContent, false, 0, true)}\n`);
-  });
-
-  copyHtmlToClipboard(resultHtml.join('\n'), resultText.join('\n'));
+  void copyTextToClipboardFromPromise(
+    contentPromise,
+    shouldNotify ? () => showNotification({ message: { key: 'TextCopied' }, tabId }) : undefined,
+    shouldNotify ? () => showNotification({ message: { key: 'GeneralError' }, tabId }) : undefined,
+    textFormat,
+  );
 }
 
 addActionHandler('openDeleteMessageModal', (global, actions, payload): ActionReturnType => {

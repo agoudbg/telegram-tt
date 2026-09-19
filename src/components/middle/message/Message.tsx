@@ -74,12 +74,13 @@ import {
   isSystemBot,
 } from '../../../global/helpers';
 import { getPeerFullTitle, getPeerTitle } from '../../../global/helpers/peers';
-import { getMessageReplyInfo, getStoryReplyInfo } from '../../../global/helpers/replies';
+import { getEphemeralReplyInfo, getMessageReplyInfo, getStoryReplyInfo } from '../../../global/helpers/replies';
 import {
   selectActiveDownloads,
   selectAnimatedEmoji,
   selectCanAutoLoadMedia,
   selectCanAutoPlayMedia,
+  selectCanForwardMessage,
   selectCanReplyToMessage,
   selectChat,
   selectChatFullInfo,
@@ -87,9 +88,9 @@ import {
   selectChatTranslations,
   selectCurrentMiddleSearch,
   selectDefaultReaction,
+  selectEphemeralOutgoingStatus,
   selectForwardedSender,
   selectFullWebPageFromMessage,
-  selectIsChatProtected,
   selectIsChatRestricted,
   selectIsChatWithBot,
   selectIsChatWithSelf,
@@ -140,13 +141,11 @@ import stopEvent from '../../../util/stopEvent';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
 import { getShareContext } from '../../../api/share/shareContext';
 import { isShareViewInlineButtonAllowed } from '../../../api/share/shareInteractionPolicy';
-import { calculateDimensionsForMessageMedia, getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
+import { getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 import { getCustomEmojiSize } from '../composer/helpers/customEmoji';
 import { buildContentClassName } from './helpers/buildContentClassName';
-import { calculateAlbumLayout } from './helpers/calculateAlbumLayout';
 import getSingularPaidMedia from './helpers/getSingularPaidMedia';
-import { calculateMediaDimensions, getMinMediaWidth, getMinMediaWidthWithText } from './helpers/mediaDimensions';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
@@ -171,6 +170,7 @@ import useOuterHandlers from './hooks/useOuterHandlers';
 
 import Audio from '../../common/Audio';
 import Avatar from '../../common/Avatar';
+import BadgeButton from '../../common/BadgeButton';
 import CustomEmoji from '../../common/CustomEmoji';
 import Document from '../../common/Document';
 import DotAnimation from '../../common/DotAnimation';
@@ -263,6 +263,7 @@ type StateProps = {
   canShowSender: boolean;
   originSender?: ApiPeer;
   botSender?: ApiUser;
+  ephemeralBot?: ApiUser;
   shouldHideReply?: boolean;
   replyMessage?: ApiMessage;
   replyMessageSender?: ApiPeer;
@@ -275,7 +276,7 @@ type StateProps = {
   uploadProgress?: number;
   isInDocumentGroup: boolean;
   isProtected?: boolean;
-  isChatProtected?: boolean;
+  canForward?: boolean;
   isFocused?: boolean;
   focusDirection?: FocusDirection;
   focusedQuote?: string;
@@ -367,8 +368,8 @@ type QuickReactionPosition =
 
 const NBSP = '\u00A0';
 const QUICK_REACTION_SIZE = 1.75 * REM;
-const EXTRA_SPACE_FOR_REACTIONS = 2.25 * REM;
 const MAX_REASON_LENGTH = 200;
+const MIN_MESSAGE_LENGTH_FOR_WIDE_MEDIA = 40;
 
 const Message = ({
   message,
@@ -394,6 +395,7 @@ const Message = ({
   canShowSender,
   originSender,
   botSender,
+  ephemeralBot,
   isThreadTop,
   shouldHideReply,
   replyMessage,
@@ -408,7 +410,7 @@ const Message = ({
   isInDocumentGroup,
   isLoadingComments,
   isProtected,
-  isChatProtected,
+  canForward: canForwardFromState,
   isFocused,
   focusDirection,
   focusedQuote,
@@ -530,12 +532,13 @@ const Message = ({
   const [declineReason, setDeclineReason] = useState('');
   const { isMobile, isTouchScreen } = useAppLayout();
 
-  useOnIntersect(bottomMarkerRef, isTypingDraft ? undefined : observeIntersectionForBottom);
+  useOnIntersect(bottomMarkerRef, isTypingDraft || message.isEphemeral ? undefined : observeIntersectionForBottom);
 
   const {
     isContextMenuOpen,
     contextMenuAnchor,
     contextMenuTarget,
+    isContextMenuAltKeyPressed,
     handleBeforeContextMenu,
     handleContextMenu: onContextMenu,
     handleContextMenuClose,
@@ -581,13 +584,18 @@ const Message = ({
   const isLocal = isMessageLocal(message);
   const isOwn = isOwnMessage(message);
   const isScheduled = messageListType === 'scheduled' || message.isScheduled;
+  const messageReplyInfo = getMessageReplyInfo(message) || getEphemeralReplyInfo(message);
+  const isEphemeralReply = messageReplyInfo?.type === 'ephemeral';
+  const storyReplyInfo = getStoryReplyInfo(message);
   const readMetricsMessage = album?.mainMessage || message;
   const canReportReadMetrics = messageListType === 'thread'
     && threadId === MAIN_THREAD_ID
     && !isQuickPreview
     && !isLocal
+    && !message.isEphemeral
     && readMetricsMessage.viewsCount !== undefined;
-  const hasMessageReply = isReplyToMessage(message) && !shouldHideReply;
+  const hasMessageReply = isReplyToMessage(message) && !shouldHideReply
+    && (!isEphemeralReply || Boolean(replyMessage));
 
   useMessageReadMetrics({
     messageRef: ref,
@@ -608,9 +616,6 @@ const Message = ({
     action, game, storyData, giveaway,
     giveawayResults, todo, dice,
   } = getMessageContent(message);
-
-  const messageReplyInfo = getMessageReplyInfo(message);
-  const storyReplyInfo = getStoryReplyInfo(message);
 
   const withVoiceTranscription = Boolean(!isTranscriptionHidden && (isTranscriptionError || transcribedText));
 
@@ -649,8 +654,7 @@ const Message = ({
     && !isInDocumentGroupNotLast
     && !isStoryMention
   );
-  const canForward = !isShareView && isChannel && !isScheduled && message.isForwardingAllowed
-    && !isChatProtected;
+  const canForward = !isShareView && Boolean(canForwardFromState);
   const canFocus = !isShareView && Boolean(isPinnedList
     || (forwardInfo
       && (forwardInfo.isChannelPost || isChatWithSelf || isRepliesChat || isAnonymousForwards)
@@ -660,11 +664,12 @@ const Message = ({
   const hasFactCheck = Boolean(factCheck?.text);
 
   const hasForwardedCustomShape = asForwarded && isCustomShape;
-  const hasSubheader = hasTopicChip || hasMessageReply || hasStoryReply || hasForwardedCustomShape
+  const hasSubheader = message.isEphemeral
+    || hasTopicChip || hasMessageReply || hasStoryReply || hasForwardedCustomShape
     || Boolean(isShowingSummary && summary?.text);
 
   const selectMessage = useLastCallback((e?: React.MouseEvent<HTMLDivElement, MouseEvent>, groupedId?: string) => {
-    if (isShareView || isAccountFrozen) return;
+    if (isShareView || isAccountFrozen || message.isEphemeral) return;
     toggleMessageSelection({
       messageId,
       groupedId,
@@ -712,6 +717,7 @@ const Message = ({
     isInDocumentGroupNotLast,
     getIsMessageListReady,
     isShareView,
+    message.isEphemeral,
   );
 
   const {
@@ -802,14 +808,20 @@ const Message = ({
   useEffect(() => {
     const element = ref.current;
     const isPartialAlbumDelete = message.isInAlbum && album?.messages.some((msg) => !msg.isDeleting);
-    if (message.isDeleting && element && !isPartialAlbumDelete) {
-      if (animateSnap(element)) {
-        setIsPlayingSnapAnimation(true);
-      } else {
-        setIsPlayingDeleteAnimation(true);
-      }
+    if (!element || isPartialAlbumDelete) return;
+
+    if (!message.isDeleting) {
+      setIsPlayingSnapAnimation(false);
+      setIsPlayingDeleteAnimation(false);
+      return;
     }
-  // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps -- Only start animation on `isDeleting` change
+
+    if (animateSnap(element)) {
+      setIsPlayingSnapAnimation(true);
+    } else {
+      setIsPlayingDeleteAnimation(true);
+    }
+  // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps -- Synchronize animation on `isDeleting` changes
   }, [message.isDeleting]);
 
   const textMessage = album?.hasMultipleCaptions ? undefined : (album?.captionMessage || message);
@@ -851,7 +863,8 @@ const Message = ({
   const text = textMessage && getMessageContent(textMessage).text;
   const isInvertedMedia = Boolean(message.isInvertedMedia);
 
-  const { replyToMsgId, replyToPeerId } = messageReplyInfo || {};
+  const replyToMsgId = messageReplyInfo?.replyToMsgId;
+  const replyToPeerId = messageReplyInfo?.type === 'message' ? messageReplyInfo.replyToPeerId : undefined;
   const { peerId: storyReplyPeerId, storyId: storyReplyId } = storyReplyInfo || {};
 
   useEffect(() => {
@@ -913,7 +926,8 @@ const Message = ({
   const withCommentButton = (commentsThreadInfo || isLocalWithCommentButton)
     && !isInDocumentGroupNotLast && messageListType === 'thread'
     && !noComments;
-  const withQuickReactionButton = !isTouchScreen && !phoneCall && !isInSelectMode && defaultReaction
+  const withQuickReactionButton = !message.isEphemeral
+    && !isTouchScreen && !phoneCall && !isInSelectMode && defaultReaction
     && !isInDocumentGroupNotLast && !isStoryMention && !hasTtl && !isAccountFrozen;
 
   const hasOutsideReactions = !withVoiceTranscription && hasReactions
@@ -928,7 +942,11 @@ const Message = ({
     theme,
   });
 
-  const contentClassName = buildContentClassName(message, album, {
+  const hasWideMedia = Boolean(
+    (photo || video || isAlbum || invoice?.extendedMedia || invoice?.photo)
+    && ((text?.text.length || 0) > MIN_MESSAGE_LENGTH_FOR_WIDE_MEDIA || isMediaWithCommentButton),
+  );
+  const contentClassName = buildClassName(buildContentClassName(message, album, {
     poll,
     webPage,
     hasSubheader,
@@ -946,7 +964,7 @@ const Message = ({
     withVoiceTranscription,
     peerColorClass,
     hasOutsideReactions,
-  });
+  }), hasWideMedia && 'with-wide-media');
 
   const withAppendix = contentClassName.includes('has-appendix');
   const emojiSize = getCustomEmojiSize(text?.emojiOnlyCount);
@@ -989,7 +1007,7 @@ const Message = ({
     replyToMsgId,
     replyMessage,
     message.id,
-    shouldHideReply || isReplyPrivate,
+    shouldHideReply || isReplyPrivate || isEphemeralReply,
   );
 
   useEnsureStory(
@@ -1017,7 +1035,7 @@ const Message = ({
     || undefined;
 
   useEffect(() => {
-    if (isTypingDraft) {
+    if (isTypingDraft || message.isEphemeral) {
       return;
     }
 
@@ -1062,6 +1080,7 @@ const Message = ({
     isQuickPreview,
     isOwn,
     isTypingDraft,
+    message.isEphemeral,
     markMessageListRead,
     messageId,
     memoFirstUnreadIdRef,
@@ -1071,80 +1090,22 @@ const Message = ({
     message.wasTypingDraft,
   ]);
 
-  const albumLayout = useMemo(() => {
-    return isAlbum
-      ? calculateAlbumLayout(isOwn, Boolean(noAvatars), album, isMobile)
-      : undefined;
-  }, [isAlbum, isOwn, noAvatars, album, isMobile]);
-
   const extraPadding = asForwarded && !isCustomShape ? 28 : 0;
 
   const sizeCalculations = useMemo(() => {
-    let calculatedWidth;
-    let contentWidth: number | undefined;
     let style = '';
-    let reactionsMaxWidth;
 
-    if (!isAlbum && (photo || video || invoice?.extendedMedia)) {
-      let width: number | undefined;
-      if (photo || video) {
-        const media = (photo || video);
-        if (media && !isRoundVideo) {
-          width = calculateMediaDimensions({
-            media,
-            isOwn,
-            asForwarded,
-            noAvatars,
-            isMobile,
-          }).width;
-        }
-      } else if (invoice?.extendedMedia && (
-        invoice.extendedMedia.width && invoice.extendedMedia.height
-      )) {
-        const { width: previewWidth, height: previewHeight } = invoice.extendedMedia;
-        width = calculateDimensionsForMessageMedia({
-          width: previewWidth,
-          height: previewHeight,
-          fromOwnMessage: isOwn,
-          asForwarded,
-          noAvatars,
-          isMobile,
-        }).width;
-      }
-
-      if (width) {
-        if (width < getMinMediaWidthWithText(isMobile)) {
-          contentWidth = width;
-        }
-        calculatedWidth = Math.max(getMinMediaWidth(text?.text, isMobile, isMediaWithCommentButton), width);
-      }
-    } else if (albumLayout) {
-      const minWidth = getMinMediaWidth(text?.text, isMobile, isMediaWithCommentButton);
-      calculatedWidth = Math.max(minWidth, albumLayout.containerStyle.width);
-    }
-
-    if (calculatedWidth) {
-      style = `width: ${calculatedWidth}px`;
-      reactionsMaxWidth = calculatedWidth + EXTRA_SPACE_FOR_REACTIONS;
-    } else if (sticker && !hasSubheader) {
+    if (sticker && !hasSubheader) {
       const { width } = getStickerDimensions(sticker, isMobile);
       style = `width: ${width + extraPadding}px`;
-      reactionsMaxWidth = width + EXTRA_SPACE_FOR_REACTIONS;
     }
 
-    return {
-      contentWidth, style, reactionsMaxWidth,
-    };
+    return style;
   }, [
-    albumLayout, asForwarded, extraPadding, hasSubheader, invoice?.extendedMedia, isAlbum, isMediaWithCommentButton,
-    isMobile, isOwn, noAvatars, photo, sticker, text?.text, video, isRoundVideo,
+    extraPadding, hasSubheader, isMobile, sticker,
   ]);
 
-  const {
-    contentWidth, style: sizeStyles, reactionsMaxWidth,
-  } = sizeCalculations;
-
-  const contentStyle = buildStyle(peerColorStyle, sizeStyles);
+  const contentStyle = buildStyle(peerColorStyle, sizeCalculations);
 
   const handleTypingAnimationEnd = useLastCallback(() => {
     if (!isTypingDraft || !previousLocalId) {
@@ -1300,12 +1261,32 @@ const Message = ({
       outgoingStatus && 'with-outgoing-icon',
     );
     const shouldReadMedia = !hasTtl || !isOwn || isChatWithSelf;
+    let ephemeralBotName: string | undefined;
+    if (message.isEphemeral && message.isOutgoing) {
+      if (!ephemeralBot) {
+        ephemeralBotName = lang('Bot');
+      } else if (ephemeralBot.hasUsername) {
+        ephemeralBotName = `@${getMainUsername(ephemeralBot)}`;
+      } else {
+        ephemeralBotName = getPeerFullTitle(oldLang, ephemeralBot);
+      }
+    }
 
     return (
       <div className={className} onDoubleClick={handleContentDoubleClick} dir="auto">
         {!asForwarded && shouldRenderSenderName() && renderSenderName()}
         {hasSubheader && (
           <div className="message-subheader">
+            {message.isEphemeral && (
+              <BadgeButton className="ephemeral-header">
+                <Icon name="eye-outline" />
+                <span dir="auto">
+                  {message.isOutgoing
+                    ? lang('EphemeralOnlyVisibleToBot', { bot: ephemeralBotName! })
+                    : lang('EphemeralOnlyVisible')}
+                </span>
+              </BadgeButton>
+            )}
             {hasTopicChip && (
               <TopicChip
                 topic={messageTopic}
@@ -1336,7 +1317,7 @@ const Message = ({
                 requestedChatTranslationTone={requestedTranslationTone}
                 observeIntersectionForLoading={observeIntersectionForLoading}
                 observeIntersectionForPlaying={observeIntersectionForPlaying}
-                onClick={handleReplyClick}
+                onClick={message.isEphemeral ? undefined : handleReplyClick}
               />
             )}
             {hasStoryReply && (
@@ -1566,7 +1547,6 @@ const Message = ({
             isInSelectMode={isInSelectMode}
             isSelected={isSelected}
             theme={theme}
-            forcedWidth={contentWidth}
           />
         )}
         {location && (
@@ -1640,7 +1620,6 @@ const Message = ({
         noAvatars={noAvatars}
         canAutoLoad={canAutoLoadMedia}
         canAutoPlay={canAutoPlayMedia}
-        asForwarded={asForwarded}
         isDownloading={isDownloading}
         isProtected={isProtected}
         theme={theme}
@@ -1664,7 +1643,6 @@ const Message = ({
         {isAlbum && observeIntersectionForLoading && (
           <Album
             album={album}
-            albumLayout={albumLayout!}
             observeIntersection={observeIntersectionForLoading}
             isOwn={isOwn}
             isProtected={isProtected}
@@ -1674,20 +1652,16 @@ const Message = ({
         )}
         {!isAlbum && photo && (
           <Photo
-            messageText={text?.text}
             photo={photo}
             isOwn={isOwn}
             observeIntersection={observeIntersectionForLoading}
-            noAvatars={noAvatars}
             canAutoLoad={canAutoLoadMedia}
             uploadProgress={uploadProgress}
             shouldAffectAppendix={hasCustomAppendix}
             isDownloading={isDownloading}
             isProtected={isProtected}
-            asForwarded={asForwarded}
             theme={theme}
             isMediaNsfw={isMediaNsfw}
-            forcedWidth={contentWidth}
             onClick={handlePhotoMediaClick}
             onCancelUpload={handleCancelUpload}
           />
@@ -1695,17 +1669,13 @@ const Message = ({
         {!isAlbum && video && !isRoundVideo && (
           <Video
             video={video}
-            isOwn={isOwn}
             observeIntersectionForLoading={observeIntersectionForLoading}
             observeIntersectionForPlaying={observeIntersectionForPlaying}
-            forcedWidth={contentWidth}
-            noAvatars={noAvatars}
             canAutoLoad={canAutoLoadMedia}
             canAutoPlay={canAutoPlayMedia}
             uploadProgress={uploadProgress}
             isDownloading={isDownloading}
             isProtected={isProtected}
-            asForwarded={asForwarded}
             isMediaNsfw={isMediaNsfw}
             lastPlaybackTimestamp={lastPlaybackTimestamp}
             onClick={handleVideoMediaClick}
@@ -1832,6 +1802,22 @@ const Message = ({
     const guestFromSenderTitle = guestFromSender ? getPeerTitle(oldLang, guestFromSender) : undefined;
 
     const shouldRenderForwardAvatar = asForwarded && senderPeer;
+    const adminTitle = (!shouldSkipRenderAdminTitle && !signature) ? (forwardInfo?.isLinkedChannelPost ? (
+      <span className="admin-title" dir="auto">{oldLang('DiscussChannel')}</span>
+    ) : message.postAuthorTitle && isGroup && !asForwarded ? (
+      <span className="admin-title" dir="auto">{message.postAuthorTitle}</span>
+    ) : (senderChatMember || fromRank) && !asForwarded ? (
+      <RankBadge
+        chatId={chatId}
+        userId={(senderChatMember?.userId || sender?.id)!}
+        isAdmin={senderChatMember?.isAdmin}
+        isOwner={senderChatMember?.isOwner}
+        rank={senderChatMember?.rank || fromRank}
+        className="admin-title-badge"
+        isClickable={!isShareView}
+      />
+    ) : undefined) : undefined;
+
     return (
       <div className="message-title" dir="ltr">
         {(senderTitle || asForwarded) ? (
@@ -1897,23 +1883,9 @@ const Message = ({
           </span>
         )}
         <div className="title-spacer" />
-        {((!shouldSkipRenderAdminTitle && !signature) || canShowSenderBoosts) && (
+        {(adminTitle || canShowSenderBoosts) && (
           <span className="message-title-meta">
-            {(!shouldSkipRenderAdminTitle && !signature) ? (forwardInfo?.isLinkedChannelPost ? (
-              <span className="admin-title" dir="auto">{oldLang('DiscussChannel')}</span>
-            ) : message.postAuthorTitle && isGroup && !asForwarded ? (
-              <span className="admin-title" dir="auto">{message.postAuthorTitle}</span>
-            ) : (senderChatMember || fromRank) && !asForwarded ? (
-              <RankBadge
-                chatId={chatId}
-                userId={(senderChatMember?.userId || sender?.id)!}
-                isAdmin={senderChatMember?.isAdmin}
-                isOwner={senderChatMember?.isOwner}
-                rank={senderChatMember?.rank || fromRank}
-                className="admin-title-badge"
-                isClickable={!isShareView}
-              />
-            ) : undefined) : undefined}
+            {adminTitle}
             {canShowSenderBoosts && (
               <span className="sender-boosts" aria-hidden>
                 <Icon name={senderBoosts > 1 ? 'boosts' : 'boost'} />
@@ -2106,12 +2078,14 @@ const Message = ({
         {visibleInlineButtons?.length ? (
           <InlineButtons
             inlineButtons={visibleInlineButtons}
+            isEphemeral={message.isEphemeral}
             onClick={isShareView ? handleShareInlineButtonClick : handleInlineButtonClick}
           />
         ) : undefined}
         {!isShareView && additionalInlineButtons && (
           <InlineButtons
             inlineButtons={additionalInlineButtons}
+            isEphemeral={message.isEphemeral}
             onClick={handleLocalInlineButtonClick}
           />
         )}
@@ -2121,7 +2095,6 @@ const Message = ({
             threadId={threadId}
             isOutside
             isCurrentUserPremium={isPremium}
-            maxWidth={reactionsMaxWidth}
             observeIntersection={observeIntersectionForPlaying}
             noRecentReactors={isChannel}
             tags={tags}
@@ -2134,9 +2107,11 @@ const Message = ({
           isOpen={isContextMenuOpen}
           anchor={contextMenuAnchor}
           targetHref={contextMenuTarget?.matches('a[href]') ? (contextMenuTarget as HTMLAnchorElement).href : undefined}
+          isAltKeyPressed={isContextMenuAltKeyPressed}
           message={message}
           album={album}
           messageListType={messageListType}
+          threadId={threadId}
           onClose={handleContextMenuClose}
           onCloseAnimationEnd={handleContextMenuHide}
           repliesThreadInfo={repliesThreadInfo}
@@ -2210,12 +2185,16 @@ export default memo(withGlobal<OwnProps>(
     const sender = selectSender(global, message);
     const originSender = selectForwardedSender(global, message);
     const botSender = viaBotId ? selectUser(global, viaBotId) : undefined;
+    const ephemeralBot = message.ephemeralBotId ? selectUser(global, message.ephemeralBotId) : undefined;
     const guestFromSender = guestChatViaId ? selectPeer(global, guestChatViaId) : undefined;
     const senderChatMember = sender?.id
       ? (adminMembersById?.[sender?.id] || members?.find((member) => member.userId === sender?.id))
       : undefined;
 
-    const { replyToMsgId, replyToPeerId, replyFrom } = getMessageReplyInfo(message) || {};
+    const replyInfo = getMessageReplyInfo(message) || getEphemeralReplyInfo(message);
+    const replyToMsgId = replyInfo?.replyToMsgId;
+    const replyToPeerId = replyInfo?.type === 'message' ? replyInfo.replyToPeerId : undefined;
+    const replyFrom = replyInfo?.type === 'message' ? replyInfo.replyFrom : undefined;
     const { peerId: storyReplyPeerId, storyId: storyReplyId } = getStoryReplyInfo(message) || {};
 
     const shouldHideReply = replyToMsgId && replyToMsgId === threadId;
@@ -2311,7 +2290,8 @@ export default memo(withGlobal<OwnProps>(
 
     const chatLevel = chat?.boostLevel || 0;
     const transcribeMinLevel = global.appConfig.groupTranscribeLevelMin;
-    const canTranscribeVoice = isPremium || Boolean(transcribeMinLevel && chatLevel >= transcribeMinLevel);
+    const canTranscribeVoice = !message.isEphemeral
+      && (isPremium || Boolean(transcribeMinLevel && chatLevel >= transcribeMinLevel));
 
     const viaBusinessBot = viaBusinessBotId ? selectUser(global, viaBusinessBotId) : undefined;
 
@@ -2340,6 +2320,7 @@ export default memo(withGlobal<OwnProps>(
       canShowSender,
       originSender,
       botSender,
+      ephemeralBot,
       guestFromSender,
       shouldHideReply: shouldHideReply || isReplyToTopicStart,
       replyMessage,
@@ -2351,7 +2332,9 @@ export default memo(withGlobal<OwnProps>(
       storySender,
       isInDocumentGroup,
       isProtected: selectIsMessageProtected(global, message),
-      isChatProtected: selectIsChatProtected(global, chatId),
+      canForward: Boolean(
+        isChannel && messageListType !== 'scheduled' && selectCanForwardMessage(global, message),
+      ),
       isFocused,
       isForwarding,
       reactionMessage,
@@ -2361,13 +2344,13 @@ export default memo(withGlobal<OwnProps>(
       isAnonymousForwards,
       isChannel,
       isGroup,
-      canReply,
+      canReply: message.isEphemeral ? !message.isOutgoing : canReply,
       highlight,
       animatedEmoji,
       animatedCustomEmoji,
-      isInSelectMode: selectIsInSelectMode(global),
-      isSelected,
-      isGroupSelected: (
+      isInSelectMode: !message.isEphemeral && selectIsInSelectMode(global),
+      isSelected: message.isEphemeral ? false : isSelected,
+      isGroupSelected: !message.isEphemeral && (
         Boolean(message.groupedId)
         && !message.isInAlbum
         && selectIsDocumentGroupSelected(global, chatId, message.groupedId)
@@ -2383,9 +2366,9 @@ export default memo(withGlobal<OwnProps>(
       shouldLoopStickers: selectShouldLoopStickers(global),
       repliesThreadInfo,
       availableReactions: global.reactions.availableReactions,
-      defaultReaction: isMessageLocal(message) || messageListType === 'scheduled'
+      defaultReaction: message.isEphemeral || isMessageLocal(message) || messageListType === 'scheduled'
         ? undefined : selectDefaultReaction(global, chatId),
-      hasActiveReactions,
+      hasActiveReactions: message.isEphemeral ? false : hasActiveReactions,
       activeEmojiInteractions,
       hasUnreadReaction,
       hasUnreadPollVote,
@@ -2411,7 +2394,9 @@ export default memo(withGlobal<OwnProps>(
         && loadingThread?.loadingMessageId === repliesThreadInfo?.originMessageId,
       shouldWarnAboutFiles,
       outgoingStatus: isOutgoing
-        ? selectOutgoingStatus(global, chatId, threadId, message.id, messageListType)
+        ? message.isEphemeral
+          ? selectEphemeralOutgoingStatus(global, chatId, message.id)
+          : selectOutgoingStatus(global, chatId, threadId, message.id, messageListType)
         : undefined,
       uploadProgress: typeof uploadProgress === 'number' ? uploadProgress : undefined,
       focusDirection: isFocused ? focusDirection : undefined,

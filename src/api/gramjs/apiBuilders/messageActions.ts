@@ -99,6 +99,14 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       chatId: buildApiPeerId(chatId, 'chat'),
     };
   }
+  if (action instanceof GramJs.MessageActionChangeCommunity) {
+    const { communityId } = action;
+    return {
+      mediaType: 'action',
+      type: 'changeCommunity',
+      communityId: communityId !== undefined ? buildApiPeerId(communityId, 'channel') : undefined,
+    };
+  }
   if (action instanceof GramJs.MessageActionPinMessage) {
     return {
       mediaType: 'action',
@@ -109,6 +117,16 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
     return {
       mediaType: 'action',
       type: 'historyClear',
+    };
+  }
+  if (action instanceof GramJs.MessageActionSetMessagesTTL) {
+    const { period, autoSettingFrom } = action;
+
+    return {
+      mediaType: 'action',
+      type: 'setMessagesTtl',
+      period,
+      autoSettingFromId: autoSettingFrom?.toString(),
     };
   }
   if (action instanceof GramJs.MessageActionGameScore) {
