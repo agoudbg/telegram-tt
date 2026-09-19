@@ -217,6 +217,39 @@ test.describe('read-only share view', () => {
     );
   });
 
+  test('keeps displayable media when an album contains an oversized file', async ({ page }) => {
+    const unexpectedErrors: string[] = [];
+    page.on('pageerror', (error) => {
+      unexpectedErrors.push(error.message);
+    });
+
+    await page.goto('/s/demo-mixed-album', { waitUntil: 'domcontentloaded' });
+    await waitForShareReady(page);
+
+    await expect(page.locator('.Album')).toHaveCount(1);
+    await expect(page.locator('.Album [id^="album-media-"]')).toHaveCount(2);
+    const albumMessage = page.locator('.Message:visible').first();
+    await expect(albumMessage).toContainText('Mixed album caption');
+    await expect(albumMessage).toContainText('[File(s) are too large to display online]');
+    await expect(page.getByRole('button', { name: 'View in Telegram' })).toHaveCount(1);
+    expect(unexpectedErrors).toEqual([]);
+  });
+
+  test('keeps displayable documents and places the fallback at the group end', async ({ page }) => {
+    await page.goto('/s/demo-mixed-document-group', { waitUntil: 'domcontentloaded' });
+    await waitForShareReady(page);
+
+    const documents = page.locator('.Message.is-in-document-group');
+    await expect(documents).toHaveCount(2);
+    await expect(page.getByText('hello.txt', { exact: true })).toHaveCount(2);
+    await expect(page.getByText('too-large.zip', { exact: true })).toHaveCount(0);
+
+    const lastDocument = documents.last();
+    await expect(lastDocument).toContainText('Mixed document group caption');
+    await expect(lastDocument).toContainText('[File(s) are too large to display online]');
+    await expect(lastDocument.getByRole('button', { name: 'View in Telegram' })).toHaveCount(1);
+  });
+
   test('reserves the forwarded header for nested forwards', async ({ page }) => {
     await page.goto('/s/demo-type-nested', { waitUntil: 'domcontentloaded' });
     await waitForShareReady(page);

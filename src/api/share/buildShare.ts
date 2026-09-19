@@ -5,9 +5,8 @@
 // backend URLs via `blobUrl`/thumbnails (the rest goes through the
 // mediaLoader short-circuit, see shareMediaUrl.ts). Media flagged
 // `hosted: false` (oversized files, docs/PLAN.md §2.5) is stripped from the
-// content and replaced with a placeholder text plus, when the bot can
-// re-send it, an official inline URL button with the `get_<id>_<seq>`
-// deep link.
+// content. Standalone media becomes a placeholder; albums keep their hosted
+// items and receive one caption notice plus one fallback button.
 
 import { Api as GramJs } from '../../lib/gramjs';
 
@@ -47,6 +46,12 @@ export interface BuiltShare {
   avatars: Record<string, string>;
   customEmojis: ApiSticker[];
   nestedForwardMessageIds: Set<number>;
+}
+
+interface UnhostedMediaMessage {
+  message: ApiMessage;
+  seq: number;
+  entry: ShareMediaEntry;
 }
 
 export function buildShare(data: ShareResponse): BuiltShare | undefined {
@@ -99,6 +104,7 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
   });
 
   const messages: ApiMessage[] = [];
+  const unhostedMedia: UnhostedMediaMessage[] = [];
   const polls: ApiMessagePoll[] = [];
   const nestedForwardMessageIds = new Set<number>();
   data.messages.forEach((entry) => {
@@ -112,7 +118,10 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
       if (previousMessage && apiMessage.date < previousMessage.date) {
         apiMessage.date = previousMessage.date;
       }
-      wireShareMedia(apiMessage, entry.seq, data);
+      const unhostedEntry = wireShareMedia(apiMessage, data);
+      if (unhostedEntry) {
+        unhostedMedia.push({ message: apiMessage, seq: entry.seq, entry: unhostedEntry });
+      }
       if (entry.nestedForward) {
         degradeForwardOrigin(apiMessage, peerNames);
         nestedForwardMessageIds.add(apiMessage.id);
@@ -126,11 +135,12 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
       if (poll) polls.push(poll);
     }
   });
-  if (!messages.length) return undefined;
+  const visibleMessages = finalizeUnhostedMedia(messages, unhostedMedia, data);
+  if (!visibleMessages.length) return undefined;
 
   // The sanitizer replaced every message's `peerId` with the virtual-chat
   // peer, so all messages resolve to the same chat id
-  const chatId = messages[0].chatId;
+  const chatId = visibleMessages[0].chatId;
 
   const chat: ApiChat = {
     id: chatId,
@@ -151,7 +161,7 @@ export function buildShare(data: ShareResponse): BuiltShare | undefined {
     user,
     users,
     chats,
-    messages,
+    messages: visibleMessages,
     polls,
     avatars,
     customEmojis,
@@ -191,13 +201,14 @@ function degradeForwardOrigin(message: ApiMessage, peerNames: Record<string, str
   };
 }
 
-function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
+function wireShareMedia(message: ApiMessage, data: ShareResponse): ShareMediaEntry | undefined {
   const { media } = data;
   const {
     photo, video, document, sticker,
   } = message.content;
 
-  if (applyUnhostedPlaceholder(message, seq, data)) return;
+  const unhostedEntry = stripUnhostedMedia(message, data);
+  if (unhostedEntry) return unhostedEntry;
 
   if (photo) {
     const entry = getShareMediaEntry(media, 'photo', photo.id);
@@ -240,13 +251,11 @@ function wireShareMedia(message: ApiMessage, seq: number, data: ShareResponse) {
       sticker.thumbnail = buildShareThumbnail(entry, stickerDimensions);
     }
   }
+
+  return undefined;
 }
 
-// Oversized media is not hosted (docs/PLAN.md §2.5): strip it from the
-// content so renderers show a plain bubble, append a placeholder note and,
-// when the bot can re-send the file, attach an official inline URL button
-// with the `get_<shareId>_<seq>` deep link. Returns true when applied.
-function applyUnhostedPlaceholder(message: ApiMessage, seq: number, data: ShareResponse): boolean {
+function stripUnhostedMedia(message: ApiMessage, data: ShareResponse): ShareMediaEntry | undefined {
   const { content } = message;
   const mediaKey = MEDIA_CONTENT_KEYS.find((key) => {
     const media = content[key];
@@ -254,30 +263,95 @@ function applyUnhostedPlaceholder(message: ApiMessage, seq: number, data: ShareR
     const entry = media?.id ? getShareMediaEntry(data.media, kind, media.id) : undefined;
     return entry && !entry.hosted;
   });
-  if (!mediaKey) return false;
+  if (!mediaKey) return undefined;
 
   const kind = mediaKey === 'photo' ? 'photo' : 'document';
   const entry = getShareMediaEntry(data.media, kind, content[mediaKey]!.id!);
-  if (!entry) return false;
+  if (!entry) return undefined;
   delete content[mediaKey];
+  return entry;
+}
 
+function finalizeUnhostedMedia(
+  messages: ApiMessage[],
+  unhostedMedia: UnhostedMediaMessage[],
+  data: ShareResponse,
+): ApiMessage[] {
+  if (!unhostedMedia.length) return messages;
+
+  const omittedMessageIds = new Set(unhostedMedia.map(({ message }) => message.id));
+  const removedMessageIds = new Set<number>();
+  const groupedItems = new Map<string, UnhostedMediaMessage[]>();
+
+  unhostedMedia.forEach((item) => {
+    const { groupedId } = item.message;
+    if (!groupedId) {
+      appendUnavailableNote(item.message, item.entry);
+      appendFallbackButton(item.message, [item], data);
+      return;
+    }
+
+    const items = groupedItems.get(groupedId) || [];
+    items.push(item);
+    groupedItems.set(groupedId, items);
+  });
+
+  groupedItems.forEach((items, groupedId) => {
+    const groupMessages = messages.filter((message) => message.groupedId === groupedId);
+    const displayableMessages = groupMessages.filter((message) => !omittedMessageIds.has(message.id));
+    const firstDisplayableMessage = displayableMessages[0];
+    const representative = firstDisplayableMessage?.isInAlbum
+      ? firstDisplayableMessage
+      : (displayableMessages[displayableMessages.length - 1] || items[0].message);
+
+    items.forEach(({ message }) => {
+      if (message !== representative) removedMessageIds.add(message.id);
+    });
+
+    const captionSource = groupMessages.find((message) => message.content.text?.text);
+    const captionTarget = displayableMessages.find((message) => message.content.text?.text)
+      || representative;
+    if (!captionTarget.content.text && captionSource?.content.text) {
+      captionTarget.content.text = { ...captionSource.content.text };
+    }
+    appendUnavailableNote(captionTarget);
+    appendFallbackButton(representative, items, data);
+
+    if (displayableMessages.length <= 1) {
+      delete representative.groupedId;
+      delete representative.isInAlbum;
+    }
+  });
+
+  return messages.filter((message) => !removedMessageIds.has(message.id));
+}
+
+function appendUnavailableNote(message: ApiMessage, entry?: ShareMediaEntry) {
+  const { content } = message;
   const lang = getTranslationFn();
-  const note = entry.size
+  const note = entry?.size
     ? `${lang('ShareMediaUnavailable')} (${formatFileSize(lang, entry.size)})`
     : lang('ShareMediaUnavailable');
+
   // Appending keeps the original caption entities valid (offsets unchanged)
   content.text = content.text?.text
     ? { ...content.text, text: `${content.text.text}\n\n${note}` }
     : { text: note };
+}
 
-  if (entry.retrievable && data.botUsername) {
-    message.inlineButtons = [[{
+function appendFallbackButton(
+  message: ApiMessage,
+  items: UnhostedMediaMessage[],
+  data: ShareResponse,
+) {
+  const retrievableItem = items.find(({ entry }) => entry.retrievable);
+  if (retrievableItem && data.botUsername) {
+    message.inlineButtons = [...(message.inlineButtons || []), [{
       type: 'url',
-      text: lang('ShareViewInTelegram'),
-      url: `https://t.me/${data.botUsername}?start=get_${data.share.id}_${seq}`,
+      text: getTranslationFn()('ShareViewInTelegram'),
+      url: `https://t.me/${data.botUsername}?start=get_${data.share.id}_${retrievableItem.seq}`,
     }]];
   }
-  return true;
 }
 
 function getShareMediaEntry(
