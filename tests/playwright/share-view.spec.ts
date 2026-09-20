@@ -194,7 +194,7 @@ test.describe('read-only share view', () => {
     await expectShareShellStable(page, shareUrl);
   });
 
-  test('keeps same-share replies and the generated Telegram fallback link', async ({ page }) => {
+  test('keeps same-share replies and uses Mini App Telegram navigation', async ({ page }) => {
     await page.goto('/s/demo-type-reply', { waitUntil: 'domcontentloaded' });
     await waitForShareReady(page);
     const replyUrl = page.url();
@@ -205,10 +205,27 @@ test.describe('read-only share view', () => {
     await page.goto('/s/demo-type-unhosted', { waitUntil: 'domcontentloaded' });
     await waitForShareReady(page);
     await page.evaluate(() => {
+      window.Telegram = {
+        WebApp: {
+          openTelegramLink: (url: string) => {
+            document.documentElement.dataset.openedTelegramUrl = url;
+          },
+        },
+      };
       window.open = (url?: string | URL) => {
         document.documentElement.dataset.openedUrl = String(url);
         return window;
       };
+    });
+    await page.getByRole('button', { name: 'View in Telegram' }).click({ noWaitAfter: true });
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-opened-telegram-url',
+      /https:\/\/t\.me\/examplebot\?start=get_demo-type-unhosted_/,
+    );
+    await expect(page.locator('html')).not.toHaveAttribute('data-opened-url');
+
+    await page.evaluate(() => {
+      delete window.Telegram;
     });
     await page.getByRole('button', { name: 'View in Telegram' }).click({ noWaitAfter: true });
     await expect(page.locator('html')).toHaveAttribute(

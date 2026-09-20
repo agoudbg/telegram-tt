@@ -69,6 +69,7 @@ import { oldTranslate } from '../../../util/oldLangProvider';
 import { debounce, onTickEnd, rafPromise } from '../../../util/schedulers';
 import { getServerTime } from '../../../util/serverTime';
 import { callApi, cancelApiProgress } from '../../../api/gramjs';
+import { getMiniApp } from '../../../api/share/miniApp';
 import { getShareContext } from '../../../api/share/shareContext';
 import {
   getIsSavedDialog,
@@ -3016,7 +3017,14 @@ addActionHandler('openUrl', async (global, actions, payload): Promise<void> => {
   // The share view has no account to resolve deep links with (docs/PLAN.md,
   // Phase 4): every link opens externally instead
   if (getShareContext()) {
-    window.open(ensureProtocol(url), '_blank', 'noopener');
+    const urlWithProtocol = ensureProtocol(url);
+    const webApp = getMiniApp();
+    if (isDeepLink(urlWithProtocol) && webApp?.openTelegramLink) {
+      webApp.openTelegramLink(urlWithProtocol);
+      return;
+    }
+
+    window.open(urlWithProtocol, '_blank', 'noopener');
     return;
   }
 
