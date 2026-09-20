@@ -217,7 +217,7 @@ test.describe('read-only share view', () => {
     );
   });
 
-  test('keeps displayable media when an album contains an oversized file', async ({ page }) => {
+  test('keeps displayable media when an album contains oversized files', async ({ page }) => {
     const unexpectedErrors: string[] = [];
     page.on('pageerror', (error) => {
       unexpectedErrors.push(error.message);
@@ -230,7 +230,7 @@ test.describe('read-only share view', () => {
     await expect(page.locator('.Album [id^="album-media-"]')).toHaveCount(2);
     const albumMessage = page.locator('.Message:visible').first();
     await expect(albumMessage).toContainText('Mixed album caption');
-    await expect(albumMessage).toContainText('[File(s) are too large to display online]');
+    await expect(albumMessage).toContainText('[3 files are too large to display online]');
     await expect(page.getByRole('button', { name: 'View in Telegram' })).toHaveCount(1);
     expect(unexpectedErrors).toEqual([]);
   });
@@ -246,7 +246,7 @@ test.describe('read-only share view', () => {
 
     const lastDocument = documents.last();
     await expect(lastDocument).toContainText('Mixed document group caption');
-    await expect(lastDocument).toContainText('[File(s) are too large to display online]');
+    await expect(lastDocument).toContainText('[1 file is too large to display online]');
     await expect(lastDocument.getByRole('button', { name: 'View in Telegram' })).toHaveCount(1);
   });
 

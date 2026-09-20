@@ -3214,7 +3214,8 @@
 "ShareNotFound" = "This share link is invalid or has expired.";
 "ShareRevoked" = "This share has been deleted.";
 "ShareError" = "Failed to load the shared messages.";
-"ShareMediaUnavailable" = "[File(s) are too large to display online]";
+"ShareMediaUnavailable_one" = "[{count} file is too large to display online]";
+"ShareMediaUnavailable_other" = "[{count} files are too large to display online]";
 "ShareContentWarning" = "Messages may have been excerpted, mixed, or tampered with and are for reference only.";
 "ShareContentWarningLearnMore" = "Learn More";
 "ShareViewInTelegram" = "View in Telegram";

@@ -2355,7 +2355,6 @@ export interface LangPair {
   'ShareNotFound': undefined;
   'ShareRevoked': undefined;
   'ShareError': undefined;
-  'ShareMediaUnavailable': undefined;
   'ShareContentWarning': undefined;
   'ShareContentWarningLearnMore': undefined;
   'ShareViewInTelegram': undefined;
@@ -4655,6 +4654,9 @@ export interface LangPairPluralWithVariables<V = LangVariable> {
     'count': V;
   };
   'PollModalAddMoreText': {
+    'count': V;
+  };
+  'ShareMediaUnavailable': {
     'count': V;
   };
 }

@@ -286,7 +286,7 @@ function finalizeUnhostedMedia(
   unhostedMedia.forEach((item) => {
     const { groupedId } = item.message;
     if (!groupedId) {
-      appendUnavailableNote(item.message, item.entry);
+      appendUnavailableNote(item.message, 1, item.entry);
       appendFallbackButton(item.message, [item], data);
       return;
     }
@@ -314,7 +314,7 @@ function finalizeUnhostedMedia(
     if (!captionTarget.content.text && captionSource?.content.text) {
       captionTarget.content.text = { ...captionSource.content.text };
     }
-    appendUnavailableNote(captionTarget);
+    appendUnavailableNote(captionTarget, items.length);
     appendFallbackButton(representative, items, data);
 
     if (displayableMessages.length <= 1) {
@@ -326,12 +326,17 @@ function finalizeUnhostedMedia(
   return messages.filter((message) => !removedMessageIds.has(message.id));
 }
 
-function appendUnavailableNote(message: ApiMessage, entry?: ShareMediaEntry) {
+function appendUnavailableNote(message: ApiMessage, omittedCount: number, entry?: ShareMediaEntry) {
   const { content } = message;
   const lang = getTranslationFn();
+  const unavailableText = lang(
+    'ShareMediaUnavailable',
+    { count: omittedCount },
+    { pluralValue: omittedCount },
+  );
   const note = entry?.size
-    ? `${lang('ShareMediaUnavailable')} (${formatFileSize(lang, entry.size)})`
-    : lang('ShareMediaUnavailable');
+    ? `${unavailableText} (${formatFileSize(lang, entry.size)})`
+    : unavailableText;
 
   // Appending keeps the original caption entities valid (offsets unchanged)
   content.text = content.text?.text
