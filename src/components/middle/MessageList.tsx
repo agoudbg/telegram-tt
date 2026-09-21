@@ -290,6 +290,7 @@ const MessageList = ({
   } = getActions();
 
   const containerRef = useRef<HTMLDivElement>();
+  const isShareView = Boolean(getShareContext());
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -1170,6 +1171,8 @@ const MessageList = ({
             newScrollTop -= revealShift;
           }
         }
+      } else if (isShareView && !prevRenderMessageIds?.length && renderMessageIds?.length) {
+        newScrollTop = 0;
       } else if (anchor) {
         const newAnchorTop = anchor.getBoundingClientRect().top;
         newScrollTop = scrollTop + (newAnchorTop - (anchorTopRef.current || 0));
@@ -1253,6 +1256,7 @@ const MessageList = ({
     getContainerHeight,
     prevContainerHeightRef,
     noMessageSendingAnimation,
+    isShareView,
   ]);
 
   useEffectWithPrevDeps(([prevIsSelectModeActive]) => {
